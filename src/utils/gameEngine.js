@@ -97,7 +97,8 @@ export const updateBall = (gameState) => {
     ball.x <= playerPaddle.x + GAME_CONFIG.PADDLE_WIDTH &&
     ball.x >= playerPaddle.x &&
     ball.y + GAME_CONFIG.BALL_SIZE >= playerPaddle.y &&
-    ball.y <= playerPaddle.y + GAME_CONFIG.PADDLE_HEIGHT
+    ball.y <= playerPaddle.y + GAME_CONFIG.PADDLE_HEIGHT &&
+    ball.velocityX < 0 // Only count if ball is moving toward paddle
   ) {
     handlePaddleCollision(ball, playerPaddle, screenHeight);
     newState.rallyCount += 1;
@@ -109,7 +110,8 @@ export const updateBall = (gameState) => {
     ball.x + GAME_CONFIG.BALL_SIZE >= aiPaddle.x &&
     ball.x <= aiPaddle.x + GAME_CONFIG.PADDLE_WIDTH &&
     ball.y + GAME_CONFIG.BALL_SIZE >= aiPaddle.y &&
-    ball.y <= aiPaddle.y + GAME_CONFIG.PADDLE_HEIGHT
+    ball.y <= aiPaddle.y + GAME_CONFIG.PADDLE_HEIGHT &&
+    ball.velocityX > 0 // Only count if ball is moving toward paddle
   ) {
     handlePaddleCollision(ball, aiPaddle, screenHeight);
     newState.rallyCount += 1;
@@ -160,6 +162,11 @@ const handlePaddleCollision = (ball, paddle, screenHeight) => {
   const direction = ball.velocityX > 0 ? 1 : -1;
   ball.velocityX = direction * ball.speed * Math.cos(angle);
   ball.velocityY = ball.speed * Math.sin(angle);
+  
+  // Ensure minimum velocity to prevent ball getting stuck
+  if (Math.abs(ball.velocityX) < 3) {
+    ball.velocityX = direction * 3;
+  }
 };
 
 // Reset ball to center
@@ -172,6 +179,10 @@ const resetBall = (gameState, screenWidth, screenHeight, server) => {
   gameState.ballActive = false;
   gameState.serving = server;
   gameState.serveTimer = 0;
+  
+  // Reset paddle positions to center
+  gameState.playerPaddle.y = screenHeight / 2 - GAME_CONFIG.PADDLE_HEIGHT / 2;
+  gameState.aiPaddle.y = screenHeight / 2 - GAME_CONFIG.PADDLE_HEIGHT / 2;
 };
 
 // Activate ball (start it moving)

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StatusBar,
   PanResponder,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, GAME_CONFIG } from '../constants/gameConfig';
@@ -16,6 +17,7 @@ import {
   updateAI,
   updatePlayerPaddle,
 } from '../utils/gameEngine';
+import { getEquippedBallSkin } from '../utils/storage';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,6 +40,86 @@ export default function GameScreen({ route, navigation }) {
   const [controlPosition, setControlPosition] = useState('bottom-right'); // bottom-right, bottom-left, top-right, top-left, bottom-bar
   const [showPositionDropdown, setShowPositionDropdown] = useState(false); // For dropdown menu
   const [showStyleDropdown, setShowStyleDropdown] = useState(false); // For control style dropdown
+  
+  // Ball skin state
+  const [ballColor, setBallColor] = useState(COLORS.ball);
+  const [ballSkin, setBallSkin] = useState(null);
+  const rainbowIndexRef = useRef(0);
+  const colorAnimValue = useRef(new Animated.Value(0)).current;
+
+  // Load equipped ball skin on mount
+  useEffect(() => {
+    loadBallSkin();
+  }, []);
+
+  const loadBallSkin = async () => {
+    const skin = await getEquippedBallSkin();
+    setBallSkin(skin);
+    if (!skin.animated) {
+      setBallColor(skin.color);
+    }
+  };
+
+  // Helper to interpolate between two hex colors
+  const interpolateColor = (color1, color2, factor) => {
+    const c1 = parseInt(color1.slice(1), 16);
+    const c2 = parseInt(color2.slice(1), 16);
+    
+    const r1 = (c1 >> 16) & 255;
+    const g1 = (c1 >> 8) & 255;
+    const b1 = c1 & 255;
+    
+    const r2 = (c2 >> 16) & 255;
+    const g2 = (c2 >> 8) & 255;
+    const b2 = c2 & 255;
+    
+    const r = Math.round(r1 + (r2 - r1) * factor);
+    const g = Math.round(g1 + (g2 - g1) * factor);
+    const b = Math.round(b1 + (b2 - b1) * factor);
+    
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  };
+
+  // Rainbow animation effect with smooth transitions
+  useEffect(() => {
+    if (ballSkin?.animated && ballSkin?.colors) {
+      const colors = ballSkin.colors;
+      const animationSpeed = ballSkin.animationSpeed || 300;
+      
+      const animateToNextColor = () => {
+        const currentIndex = rainbowIndexRef.current;
+        const nextIndex = (currentIndex + 1) % colors.length;
+        
+        // Animate from 0 to 1
+        Animated.timing(colorAnimValue, {
+          toValue: 1,
+          duration: animationSpeed,
+          useNativeDriver: false,
+        }).start(() => {
+          // Update to next color and reset animation value
+          rainbowIndexRef.current = nextIndex;
+          colorAnimValue.setValue(0);
+        });
+      };
+      
+      // Set up listener to update color during animation
+      const listenerId = colorAnimValue.addListener(({ value }) => {
+        const currentIndex = rainbowIndexRef.current;
+        const nextIndex = (currentIndex + 1) % colors.length;
+        const interpolatedColor = interpolateColor(colors[currentIndex], colors[nextIndex], value);
+        setBallColor(interpolatedColor);
+      });
+      
+      // Start animation loop
+      const interval = setInterval(animateToNextColor, animationSpeed);
+      animateToNextColor(); // Start immediately
+      
+      return () => {
+        clearInterval(interval);
+        colorAnimValue.removeListener(listenerId);
+      };
+    }
+  }, [ballSkin]);
 
   const handlePaddleMove = (direction) => {
     setGameState((prevState) => {
@@ -203,19 +285,22 @@ export default function GameScreen({ route, navigation }) {
       {/* Score Display */}
       <View style={styles.scoreContainer}>
         <View style={styles.scoreBox}>
-          <Text style={styles.scoreLabel}>YOU</Text>
+          <Text style={styles.scoreLabel}>You</Text>
           <Text style={styles.scoreValue}>{gameState.score.player}</Text>
         </View>
         
         <View style={styles.centerInfo}>
           <Text style={styles.difficultyText}>{difficulty}</Text>
-          <View style={styles.coinsRow}>
-            <Ionicons name="wallet" size={18} color={COLORS.accent} />
-            <Text style={styles.coinsText}>{gameState.totalCoins}</Text>
+          <View style={styles.dividerSmall} />
+          <View style={styles.statsRow}>
+            <View style={styles.coinsRow}>
+              <Ionicons name="disc" size={14} color="#F59E0B" />
+              <Text style={styles.coinsText}>{gameState.totalCoins}</Text>
+            </View>
+            {gameState.rallyCount > 0 && (
+              <Text style={styles.rallyText}>x{gameState.rallyCount}</Text>
+            )}
           </View>
-          {gameState.rallyCount > 0 && (
-            <Text style={styles.rallyText}>Rally: {gameState.rallyCount}</Text>
-          )}
         </View>
 
         <View style={styles.scoreBox}>
@@ -260,6 +345,7 @@ export default function GameScreen({ route, navigation }) {
             {
               left: gameState.ball.x,
               top: gameState.ball.y,
+              backgroundColor: ballColor,
             },
           ]}
         />
@@ -281,19 +367,19 @@ export default function GameScreen({ route, navigation }) {
           <View style={styles.gameOverModal}>
             <Ionicons 
               name={gameState.score.player > gameState.score.ai ? 'trophy' : 'sad'} 
-              size={64} 
-              color={gameState.score.player > gameState.score.ai ? COLORS.accent : COLORS.aiPaddle} 
+              size={56} 
+              color={gameState.score.player > gameState.score.ai ? '#F59E0B' : COLORS.aiPaddle} 
             />
             <Text style={styles.gameOverTitle}>
-              {gameState.score.player > gameState.score.ai ? 'YOU WIN!' : 'YOU LOSE'}
+              {gameState.score.player > gameState.score.ai ? 'Victory' : 'Defeat'}
             </Text>
             <Text style={styles.gameOverScore}>
               {gameState.score.player} - {gameState.score.ai}
             </Text>
             {gameState.score.player > gameState.score.ai && (
               <View style={styles.coinsEarnedContainer}>
-                <Ionicons name="wallet" size={24} color={COLORS.accent} />
-                <Text style={styles.coinsEarned}> {gameState.totalCoins} coins earned!</Text>
+                <Ionicons name="disc" size={18} color="#F59E0B" />
+                <Text style={styles.coinsEarned}>{gameState.totalCoins}</Text>
               </View>
             )}
             <View style={styles.gameOverButtons}>
@@ -317,21 +403,19 @@ export default function GameScreen({ route, navigation }) {
       {/* Pause Screen - Don't show during countdown */}
       {gameState.isPaused && !gameState.gameOver && !showSettings && countdown === 0 && (
         <View style={styles.pauseContainer}>
-          <Text style={styles.pauseText}>PAUSED</Text>
-          <Text style={styles.pauseSubtext}>Tap play to continue</Text>
+          <Text style={styles.pauseText}>Paused</Text>
         </View>
       )}
 
       {/* Serve Indicator */}
       {!gameState.ballActive && !gameState.gameOver && (
         <View style={styles.serveIndicator}>
-          <Ionicons name="hand-right" size={24} color={COLORS.primary} />
           <Text style={styles.serveText}>
             {gameState.serving === 'player' 
               ? (gameState.serveTimer < 60 
-                  ? 'Player serving... Get ready!' 
-                  : 'Your serve! Move to start')
-              : 'AI serving...'}
+                  ? 'Get Ready' 
+                  : 'Tap to Serve')
+              : 'AI Serving'}
           </Text>
         </View>
       )}
@@ -578,49 +662,73 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 30,
     paddingTop: 60,
-    paddingBottom: 15,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingBottom: 20,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(59, 130, 246, 0.1)',
   },
   scoreBox: {
     alignItems: 'center',
-    minWidth: 80,
+    minWidth: 70,
   },
   scoreLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: COLORS.textSecondary,
-    letterSpacing: 2,
-    marginBottom: 4,
-    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 6,
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   scoreValue: {
-    fontSize: 42,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '300',
     color: COLORS.text,
+    letterSpacing: 2,
   },
   centerInfo: {
     alignItems: 'center',
+    gap: 8,
+    minHeight: 70, // Fixed height to prevent growing
   },
   difficultyText: {
-    fontSize: 14,
+    fontSize: 11,
     color: COLORS.primary,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    fontWeight: '600',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  dividerSmall: {
+    width: 30,
+    height: 1,
+    backgroundColor: COLORS.primary,
+    opacity: 0.3,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   coinsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   coinsText: {
-    fontSize: 18,
-    color: COLORS.accent,
-    fontWeight: 'bold',
-    marginLeft: 6,
+    fontSize: 16,
+    color: '#F59E0B',
+    fontWeight: '700',
   },
   rallyText: {
-    fontSize: 12,
-    color: COLORS.secondary,
-    marginTop: 4,
+    fontSize: 11,
+    color: COLORS.primary,
+    fontWeight: '600',
+    letterSpacing: 1,
   },
   gameArea: {
     flex: 1,
@@ -632,42 +740,51 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 2,
-    backgroundColor: COLORS.textSecondary,
-    opacity: 0.2,
+    backgroundColor: COLORS.primary,
+    opacity: 0.1,
   },
   paddle: {
     position: 'absolute',
     width: GAME_CONFIG.PADDLE_WIDTH,
     height: GAME_CONFIG.PADDLE_HEIGHT,
-    borderRadius: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 5,
   },
   ball: {
     position: 'absolute',
     width: GAME_CONFIG.BALL_SIZE,
     height: GAME_CONFIG.BALL_SIZE,
     borderRadius: GAME_CONFIG.BALL_SIZE / 2,
-    backgroundColor: COLORS.ball,
+    // backgroundColor set dynamically based on equipped skin
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 8,
   },
   controls: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingVertical: 25,
-    paddingBottom: 45,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    gap: 20,
+    paddingVertical: 20,
+    paddingBottom: 40,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(59, 130, 246, 0.1)',
   },
   controlButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: COLORS.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
   },
   gameOverContainer: {
     position: 'absolute',
@@ -684,53 +801,66 @@ const styles = StyleSheet.create({
     padding: 40,
     borderRadius: 20,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
     minWidth: 300,
   },
   gameOverTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '300',
     color: COLORS.text,
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: 16,
+    marginBottom: 12,
     textAlign: 'center',
+    letterSpacing: 4,
   },
   gameOverScore: {
-    fontSize: 48,
-    fontWeight: 'bold',
+    fontSize: 42,
+    fontWeight: '300',
     color: COLORS.primary,
     marginBottom: 20,
+    letterSpacing: 8,
   },
   coinsEarnedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
     marginBottom: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   coinsEarned: {
-    fontSize: 20,
-    color: COLORS.accent,
-    fontWeight: 'bold',
+    fontSize: 22,
+    color: '#F59E0B',
+    fontWeight: '700',
   },
   gameOverButtons: {
     width: '100%',
+    gap: 12,
   },
   button: {
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 15,
+    borderWidth: 1,
   },
   primaryButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: COLORS.primary,
   },
   secondaryButton: {
-    backgroundColor: COLORS.textSecondary,
+    backgroundColor: 'transparent',
+    borderColor: COLORS.textSecondary,
   },
   buttonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     color: COLORS.text,
+    letterSpacing: 1,
   },
   pauseContainer: {
     position: 'absolute',
@@ -738,20 +868,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   pauseText: {
-    fontSize: 48,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '300',
     color: COLORS.text,
-    letterSpacing: 4,
-  },
-  pauseSubtext: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    marginTop: 10,
+    letterSpacing: 8,
   },
   serveIndicator: {
     position: 'absolute',
@@ -759,17 +884,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingVertical: 16,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    paddingVertical: 14,
     paddingHorizontal: 24,
-    marginHorizontal: 40,
-    borderRadius: 12,
+    marginHorizontal: 50,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
   },
   serveText: {
-    fontSize: 16,
-    color: COLORS.primary,
-    marginTop: 8,
-    fontWeight: 'bold',
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   arrowControls: {
     position: 'absolute',

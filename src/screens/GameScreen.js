@@ -17,7 +17,8 @@ import {
   updateAI,
   updatePlayerPaddle,
 } from '../utils/gameEngine';
-import { getEquippedBallSkin } from '../utils/storage';
+import { getEquippedBallSkin, getEquippedPaddleSkin } from '../utils/storage';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -28,6 +29,7 @@ const PLAYABLE_HEIGHT = SCREEN_HEIGHT - SCORE_HEIGHT - CONTROLS_HEIGHT;
 
 export default function GameScreen({ route, navigation }) {
   const { difficulty } = route.params;
+  const { colors } = useTheme();
   
   const [gameState, setGameState] = useState(() =>
     initializeGame(SCREEN_WIDTH, PLAYABLE_HEIGHT, difficulty)
@@ -47,9 +49,16 @@ export default function GameScreen({ route, navigation }) {
   const rainbowIndexRef = useRef(0);
   const colorAnimValue = useRef(new Animated.Value(0)).current;
 
+  // Paddle skin state
+  const [paddleColor, setPaddleColor] = useState(COLORS.paddle);
+  const [paddleSkin, setPaddleSkin] = useState(null);
+  const paddleRainbowIndexRef = useRef(0);
+  const paddleColorAnimValue = useRef(new Animated.Value(0)).current;
+
   // Load equipped ball skin on mount
   useEffect(() => {
     loadBallSkin();
+    loadPaddleSkin();
   }, []);
 
   const loadBallSkin = async () => {
@@ -57,6 +66,14 @@ export default function GameScreen({ route, navigation }) {
     setBallSkin(skin);
     if (!skin.animated) {
       setBallColor(skin.color);
+    }
+  };
+
+  const loadPaddleSkin = async () => {
+    const skin = await getEquippedPaddleSkin();
+    setPaddleSkin(skin);
+    if (!skin.animated) {
+      setPaddleColor(skin.color);
     }
   };
 
@@ -120,6 +137,47 @@ export default function GameScreen({ route, navigation }) {
       };
     }
   }, [ballSkin]);
+
+  // Rainbow animation effect for paddle with smooth transitions
+  useEffect(() => {
+    if (paddleSkin?.animated && paddleSkin?.colors) {
+      const colors = paddleSkin.colors;
+      const animationSpeed = paddleSkin.animationSpeed || 300;
+      
+      const animateToNextColor = () => {
+        const currentIndex = paddleRainbowIndexRef.current;
+        const nextIndex = (currentIndex + 1) % colors.length;
+        
+        // Animate from 0 to 1
+        Animated.timing(paddleColorAnimValue, {
+          toValue: 1,
+          duration: animationSpeed,
+          useNativeDriver: false,
+        }).start(() => {
+          // Update to next color and reset animation value
+          paddleRainbowIndexRef.current = nextIndex;
+          paddleColorAnimValue.setValue(0);
+        });
+      };
+      
+      // Set up listener to update color during animation
+      const listenerId = paddleColorAnimValue.addListener(({ value }) => {
+        const currentIndex = paddleRainbowIndexRef.current;
+        const nextIndex = (currentIndex + 1) % colors.length;
+        const interpolatedColor = interpolateColor(colors[currentIndex], colors[nextIndex], value);
+        setPaddleColor(interpolatedColor);
+      });
+      
+      // Start animation loop
+      const interval = setInterval(animateToNextColor, animationSpeed);
+      animateToNextColor(); // Start immediately
+      
+      return () => {
+        clearInterval(interval);
+        paddleColorAnimValue.removeListener(listenerId);
+      };
+    }
+  }, [paddleSkin]);
 
   const handlePaddleMove = (direction) => {
     setGameState((prevState) => {
@@ -278,6 +336,8 @@ export default function GameScreen({ route, navigation }) {
     setShowStyleDropdown(false);
   };
 
+  const styles = getStyles(colors);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -321,7 +381,7 @@ export default function GameScreen({ route, navigation }) {
             {
               left: gameState.playerPaddle.x,
               top: gameState.playerPaddle.y,
-              backgroundColor: COLORS.paddle,
+              backgroundColor: paddleColor,
             },
           ]}
         />
@@ -651,10 +711,10 @@ export default function GameScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
   scoreContainer: {
     flexDirection: 'row',
@@ -673,7 +733,7 @@ const styles = StyleSheet.create({
   },
   scoreLabel: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     letterSpacing: 1,
     marginBottom: 6,
     fontWeight: '500',
@@ -682,7 +742,7 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 36,
     fontWeight: '300',
-    color: COLORS.text,
+    color: colors.text,
     letterSpacing: 2,
   },
   centerInfo: {
@@ -692,7 +752,7 @@ const styles = StyleSheet.create({
   },
   difficultyText: {
     fontSize: 11,
-    color: COLORS.primary,
+    color: colors.primary,
     fontWeight: '600',
     letterSpacing: 2,
     textTransform: 'uppercase',
@@ -700,7 +760,7 @@ const styles = StyleSheet.create({
   dividerSmall: {
     width: 30,
     height: 1,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     opacity: 0.3,
   },
   statsRow: {
@@ -726,7 +786,7 @@ const styles = StyleSheet.create({
   },
   rallyText: {
     fontSize: 11,
-    color: COLORS.primary,
+    color: colors.primary,
     fontWeight: '600',
     letterSpacing: 1,
   },
@@ -740,7 +800,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 2,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     opacity: 0.1,
   },
   paddle: {
@@ -760,11 +820,6 @@ const styles = StyleSheet.create({
     height: GAME_CONFIG.BALL_SIZE,
     borderRadius: GAME_CONFIG.BALL_SIZE / 2,
     // backgroundColor set dynamically based on equipped skin
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 8,
   },
   controls: {
     flexDirection: 'row',
@@ -797,7 +852,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   gameOverModal: {
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     padding: 40,
     borderRadius: 20,
     alignItems: 'center',
@@ -808,7 +863,7 @@ const styles = StyleSheet.create({
   gameOverTitle: {
     fontSize: 28,
     fontWeight: '300',
-    color: COLORS.text,
+    color: colors.text,
     marginTop: 16,
     marginBottom: 12,
     textAlign: 'center',
@@ -817,7 +872,7 @@ const styles = StyleSheet.create({
   gameOverScore: {
     fontSize: 42,
     fontWeight: '300',
-    color: COLORS.primary,
+    color: colors.primary,
     marginBottom: 20,
     letterSpacing: 8,
   },
@@ -850,16 +905,16 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
-    borderColor: COLORS.textSecondary,
+    borderColor: colors.textSecondary,
   },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.text,
+    color: colors.text,
     letterSpacing: 1,
   },
   pauseContainer: {
@@ -875,7 +930,7 @@ const styles = StyleSheet.create({
   pauseText: {
     fontSize: 32,
     fontWeight: '300',
-    color: COLORS.text,
+    color: colors.text,
     letterSpacing: 8,
   },
   serveIndicator: {
@@ -894,7 +949,7 @@ const styles = StyleSheet.create({
   },
   serveText: {
     fontSize: 13,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '500',
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -919,17 +974,14 @@ const styles = StyleSheet.create({
     left: 20,
   },
   arrowButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
     marginBottom: 12,
   },
   bottomBarControls: {
@@ -942,17 +994,14 @@ const styles = StyleSheet.create({
     gap: 40,
   },
   bottomBarButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   settingsOverlay: {
     position: 'absolute',
@@ -966,11 +1015,11 @@ const styles = StyleSheet.create({
   },
   settingsModal: {
     width: '80%',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderRadius: 20,
     padding: 30,
     borderWidth: 2,
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
   },
   closeButton: {
     position: 'absolute',
@@ -981,7 +1030,7 @@ const styles = StyleSheet.create({
   settingsTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 30,
     letterSpacing: 2,
@@ -992,12 +1041,12 @@ const styles = StyleSheet.create({
   settingsOption: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: colors.text,
     marginBottom: 12,
   },
   settingsDescription: {
     fontSize: 16,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
   },
   dropdownTrigger: {
     flexDirection: 'row',
@@ -1008,11 +1057,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
   },
   dropdownText: {
     fontSize: 16,
-    color: COLORS.text,
+    color: colors.text,
     fontWeight: '600',
     flex: 1,
     marginRight: 12,
@@ -1022,7 +1071,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(15, 23, 42, 0.95)',
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
     overflow: 'hidden',
   },
   dropdownItem: {
@@ -1038,11 +1087,11 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     fontSize: 16,
-    color: COLORS.textSecondary,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   dropdownItemTextActive: {
-    color: COLORS.text,
+    color: colors.text,
     fontWeight: 'bold',
   },
   countdownOverlay: {
@@ -1058,6 +1107,6 @@ const styles = StyleSheet.create({
   countdownText: {
     fontSize: 120,
     fontWeight: 'bold',
-    color: COLORS.aiPaddle, // Red color
+    color: colors.primary,
   },
 });

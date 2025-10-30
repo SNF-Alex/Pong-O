@@ -31,7 +31,7 @@ export const GAME_CONFIG = {
   
   // Coin rewards
   RALLY_COIN_THRESHOLD: 5, // Hits before earning rally coins
-  RALLY_COIN_REWARD: 5,
+  RALLY_COIN_REWARD: 10,
 };
 
 // Modern color scheme

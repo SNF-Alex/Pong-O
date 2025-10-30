@@ -1,11 +1,12 @@
-import { BALL_SKINS } from './skins';
+import { BALL_SKINS, PADDLE_SKINS, THEME_SKINS } from './skins';
 
 // Loot box definitions
 export const LOOT_BOXES = {
-  basic_box: {
-    id: 'basic_box',
-    name: 'Basic Box',
-    description: 'Contains all 9 ball skins',
+  basic_ball_box: {
+    id: 'basic_ball_box',
+    name: 'Basic Ball Box',
+    type: 'ball',
+    description: 'Contains all 10 ball skins',
     price: 0, // TODO: Change to 1000 after testing
     icon: 'cube-outline',
     
@@ -19,6 +20,7 @@ export const LOOT_BOXES = {
       'ball_grey',
       'ball_blue',
       'ball_purple',
+      'ball_pink',
       'ball_rainbow',
     ],
     
@@ -27,8 +29,70 @@ export const LOOT_BOXES = {
       common: 64,      // Red, Orange, Yellow, Brown
       uncommon: 20,    // Green, Grey
       rare: 10,        // Blue
-      epic: 5,         // Purple
+      epic: 5,         // Purple, Pink (2.5% each)
       legendary: 1,    // Rainbow
+    },
+  },
+  basic_paddle_box: {
+    id: 'basic_paddle_box',
+    name: 'Basic Paddle Box',
+    type: 'paddle',
+    description: 'Contains all 10 paddle skins',
+    price: 0, // TODO: Change to 1000 after testing
+    icon: 'cube-outline',
+    
+    // All skins available in this box
+    skinPool: [
+      'paddle_red',
+      'paddle_orange',
+      'paddle_yellow',
+      'paddle_brown',
+      'paddle_green',
+      'paddle_grey',
+      'paddle_blue',
+      'paddle_purple',
+      'paddle_pink',
+      'paddle_rainbow',
+    ],
+    
+    // Rarity drop rates (must sum to 100)
+    rarityWeights: {
+      common: 64,      // Red, Orange, Yellow, Brown
+      uncommon: 20,    // Green, Grey
+      rare: 10,        // Blue
+      epic: 5,         // Purple, Pink (2.5% each)
+      legendary: 1,    // Rainbow
+    },
+  },
+  basic_theme_box: {
+    id: 'basic_theme_box',
+    name: 'Basic Theme Box',
+    type: 'theme',
+    description: 'Contains all 10 game themes',
+    price: 0, // TODO: Change to 1000 after testing
+    icon: 'cube-outline',
+    
+    // All themes available in this box
+    skinPool: [
+      'theme_default',
+      'theme_dark_grey',
+      'theme_light_grey',
+      'theme_navy',
+      'theme_forest',
+      'theme_lavender',
+      'theme_sand',
+      'theme_ocean',
+      'theme_white',
+      'theme_neon',
+    ],
+    
+    // Rarity drop rates (must sum to 100)
+    rarityWeights: {
+      common: 64,      // Default, Dark Grey, Light Grey, Navy
+      uncommon: 20,    // Forest, Lavender
+      rare: 10,        // Sand, Ocean (5% each)
+      epic: 5,         // White
+      legendary: 1,    // Neon
     },
   },
 };
@@ -75,9 +139,12 @@ export const rollLootBox = (boxId) => {
   
   console.log('Determined rarity:', rarity);
   
+  // Get the appropriate skin collection based on box type
+  const SKIN_COLLECTION = box.type === 'paddle' ? PADDLE_SKINS : box.type === 'theme' ? THEME_SKINS : BALL_SKINS;
+  
   // Get all skins of that rarity from the box's pool
   const skinsOfRarity = box.skinPool
-    .map(skinId => BALL_SKINS[skinId])
+    .map(skinId => SKIN_COLLECTION[skinId])
     .filter(skin => skin && skin.rarity === rarity);
   
   console.log('Skins of rarity', rarity, ':', skinsOfRarity.length);

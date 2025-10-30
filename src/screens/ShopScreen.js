@@ -1,17 +1,99 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { LOOT_BOXES } from '../config/lootBoxes';
 
-export default function ShopScreen({ navigation }) {
-  const basicBox = LOOT_BOXES.basic_box;
+export default function ShopScreen({ route, navigation }) {
+  const [activeSection, setActiveSection] = useState(route?.params?.activeSection || 'balls'); // 'balls', 'paddles', 'themes'
+  
+  const ballBox = LOOT_BOXES.basic_ball_box;
+  const paddleBox = LOOT_BOXES.basic_paddle_box;
+  const themeBox = LOOT_BOXES.basic_theme_box;
 
-  const handlePurchaseBox = () => {
+  // Update active section when navigation params change
+  useEffect(() => {
+    if (route?.params?.activeSection) {
+      setActiveSection(route.params.activeSection);
+    }
+  }, [route?.params?.activeSection]);
+
+  const handlePurchaseBox = (boxId) => {
     // TODO: Check if user has enough coins (when price is 1000)
     // For now, since price is 0, just navigate to Plinko
-    navigation.navigate('Plinko', { boxId: 'basic_box' });
+    navigation.navigate('Plinko', { boxId });
   };
+
+  const renderBoxCard = (box) => (
+    <View key={box.id} style={styles.boxCard}>
+      <View style={styles.boxIconContainer}>
+        <Ionicons name={box.icon} size={80} color={COLORS.primary} />
+        <View style={styles.glow} />
+      </View>
+
+      <Text style={styles.boxName}>{box.name}</Text>
+      <Text style={styles.boxDescription}>{box.description}</Text>
+
+      {/* Rarity Indicators */}
+      <View style={styles.rarityContainer}>
+        <Text style={styles.rarityLabel}>Drop Rates:</Text>
+        <View style={styles.rarityGrid}>
+          <View style={styles.rarityItem}>
+            <View style={[styles.rarityDot, { backgroundColor: '#9CA3AF' }]} />
+            <Text style={styles.rarityText}>Common {box.rarityWeights.common}%</Text>
+          </View>
+          <View style={styles.rarityItem}>
+            <View style={[styles.rarityDot, { backgroundColor: '#10B981' }]} />
+            <Text style={styles.rarityText}>Uncommon {box.rarityWeights.uncommon}%</Text>
+          </View>
+          <View style={styles.rarityItem}>
+            <View style={[styles.rarityDot, { backgroundColor: '#3B82F6' }]} />
+            <Text style={styles.rarityText}>Rare {box.rarityWeights.rare}%</Text>
+          </View>
+          <View style={styles.rarityItem}>
+            <View style={[styles.rarityDot, { backgroundColor: '#A855F7' }]} />
+            <Text style={styles.rarityText}>Epic {box.rarityWeights.epic}%</Text>
+          </View>
+          <View style={styles.rarityItem}>
+            <View style={[styles.rarityDot, { backgroundColor: '#F59E0B' }]} />
+            <Text style={styles.rarityText}>Legendary {box.rarityWeights.legendary}%</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Price and Purchase Button */}
+      <View style={styles.purchaseContainer}>
+        <View style={styles.priceTag}>
+          <Ionicons name="disc" size={24} color="#F59E0B" />
+          <Text style={styles.priceText}>
+            {box.price === 0 ? 'FREE' : box.price}
+          </Text>
+          {box.price === 0 && (
+            <Text style={styles.testLabel}>(Testing)</Text>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.purchaseButton}
+          onPress={() => handlePurchaseBox(box.id)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="gift-outline" size={24} color="#000" />
+          <Text style={styles.purchaseButtonText}>OPEN BOX</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Note about future price */}
+      {box.price === 0 && (
+        <View style={styles.noteContainer}>
+          <Ionicons name="information-circle-outline" size={16} color={COLORS.textSecondary} />
+          <Text style={styles.noteText}>
+            Final price will be 1,000 coins
+          </Text>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -35,86 +117,64 @@ export default function ShopScreen({ navigation }) {
         <View style={styles.backButton} />
       </View>
 
+      {/* Section Tabs */}
+      <View style={styles.sectionTabs}>
+        <TouchableOpacity
+          style={[styles.sectionTab, activeSection === 'balls' && styles.sectionTabActive]}
+          onPress={() => setActiveSection('balls')}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name="baseball" 
+            size={20} 
+            color={activeSection === 'balls' ? COLORS.primary : COLORS.textSecondary} 
+          />
+          <Text style={[styles.sectionTabText, activeSection === 'balls' && styles.sectionTabTextActive]}>
+            Ball Boxes
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.sectionTab, activeSection === 'paddles' && styles.sectionTabActive]}
+          onPress={() => setActiveSection('paddles')}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name="reorder-four" 
+            size={20} 
+            color={activeSection === 'paddles' ? COLORS.primary : COLORS.textSecondary} 
+          />
+          <Text style={[styles.sectionTabText, activeSection === 'paddles' && styles.sectionTabTextActive]}>
+            Paddle Boxes
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.sectionTab, activeSection === 'themes' && styles.sectionTabActive]}
+          onPress={() => setActiveSection('themes')}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name="image" 
+            size={20} 
+            color={activeSection === 'themes' ? COLORS.primary : COLORS.textSecondary} 
+          />
+          <Text style={[styles.sectionTabText, activeSection === 'themes' && styles.sectionTabTextActive]}>
+            Theme Boxes
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         
-        {/* Basic Box Card */}
-        <View style={styles.boxCard}>
-          <View style={styles.boxIconContainer}>
-            <Ionicons name={basicBox.icon} size={80} color={COLORS.primary} />
-            <View style={styles.glow} />
-          </View>
+        {/* Ball Boxes Section */}
+        {activeSection === 'balls' && renderBoxCard(ballBox)}
 
-          <Text style={styles.boxName}>{basicBox.name}</Text>
-          <Text style={styles.boxDescription}>{basicBox.description}</Text>
+        {/* Paddle Boxes Section */}
+        {activeSection === 'paddles' && renderBoxCard(paddleBox)}
 
-          {/* Rarity Indicators */}
-          <View style={styles.rarityContainer}>
-            <Text style={styles.rarityLabel}>Drop Rates:</Text>
-            <View style={styles.rarityGrid}>
-              <View style={styles.rarityItem}>
-                <View style={[styles.rarityDot, { backgroundColor: '#9CA3AF' }]} />
-                <Text style={styles.rarityText}>Common {basicBox.rarityWeights.common}%</Text>
-              </View>
-              <View style={styles.rarityItem}>
-                <View style={[styles.rarityDot, { backgroundColor: '#10B981' }]} />
-                <Text style={styles.rarityText}>Uncommon {basicBox.rarityWeights.uncommon}%</Text>
-              </View>
-              <View style={styles.rarityItem}>
-                <View style={[styles.rarityDot, { backgroundColor: '#3B82F6' }]} />
-                <Text style={styles.rarityText}>Rare {basicBox.rarityWeights.rare}%</Text>
-              </View>
-              <View style={styles.rarityItem}>
-                <View style={[styles.rarityDot, { backgroundColor: '#A855F7' }]} />
-                <Text style={styles.rarityText}>Epic {basicBox.rarityWeights.epic}%</Text>
-              </View>
-              <View style={styles.rarityItem}>
-                <View style={[styles.rarityDot, { backgroundColor: '#F59E0B' }]} />
-                <Text style={styles.rarityText}>Legendary {basicBox.rarityWeights.legendary}%</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Price and Purchase Button */}
-          <View style={styles.purchaseContainer}>
-            <View style={styles.priceTag}>
-              <Ionicons name="disc" size={24} color="#F59E0B" />
-              <Text style={styles.priceText}>
-                {basicBox.price === 0 ? 'FREE' : basicBox.price}
-              </Text>
-              {basicBox.price === 0 && (
-                <Text style={styles.testLabel}>(Testing)</Text>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={styles.purchaseButton}
-              onPress={handlePurchaseBox}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="gift-outline" size={24} color="#000" />
-              <Text style={styles.purchaseButtonText}>OPEN BOX</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Note about future price */}
-          {basicBox.price === 0 && (
-            <View style={styles.noteContainer}>
-              <Ionicons name="information-circle-outline" size={16} color={COLORS.textSecondary} />
-              <Text style={styles.noteText}>
-                Final price will be 1,000 coins
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Coming Soon Section */}
-        <View style={styles.comingSoonContainer}>
-          <Ionicons name="lock-closed-outline" size={40} color={COLORS.textSecondary} />
-          <Text style={styles.comingSoonTitle}>More Boxes Coming Soon</Text>
-          <Text style={styles.comingSoonText}>
-            Premium boxes, special events, and exclusive skins
-          </Text>
-        </View>
+        {/* Theme Boxes Section */}
+        {activeSection === 'themes' && renderBoxCard(themeBox)}
 
       </ScrollView>
     </View>
@@ -164,6 +224,42 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     fontWeight: '500',
+  },
+  sectionTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  sectionTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  sectionTabActive: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: COLORS.primary,
+  },
+  sectionTabText: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  sectionTabTextActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
   },
   content: {
     flex: 1,

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, StatusBar } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { RARITY_INFO } from '../config/skins';
-import { unlockSkin } from '../utils/storage';
+import { unlockSkin, unlockPaddleSkin, unlockTheme } from '../utils/storage';
 
 export default function RewardRevealScreen({ route, navigation }) {
   const { skin, rarity } = route.params;
@@ -47,18 +47,34 @@ export default function RewardRevealScreen({ route, navigation }) {
   }, []);
 
   const handleCollect = async () => {
-    // Save skin to AsyncStorage
-    await unlockSkin(skin.id);
-    navigation.navigate('Menu');
+    // Save skin to AsyncStorage based on type
+    if (skin.type === 'paddle') {
+      await unlockPaddleSkin(skin.id);
+      navigation.navigate('Shop', { activeSection: 'paddles' });
+    } else if (skin.type === 'theme') {
+      await unlockTheme(skin.id);
+      navigation.navigate('Shop', { activeSection: 'themes' });
+    } else {
+      await unlockSkin(skin.id);
+      navigation.navigate('Shop', { activeSection: 'balls' });
+    }
   };
 
   const handleViewBackpack = async () => {
     // Save skin to AsyncStorage first
-    await unlockSkin(skin.id);
-    navigation.navigate('Backpack');
+    if (skin.type === 'paddle') {
+      await unlockPaddleSkin(skin.id);
+      navigation.navigate('Backpack', { activeSection: 'paddles' });
+    } else if (skin.type === 'theme') {
+      await unlockTheme(skin.id);
+      navigation.navigate('Backpack', { activeSection: 'themes' });
+    } else {
+      await unlockSkin(skin.id);
+      navigation.navigate('Backpack', { activeSection: 'balls' });
+    }
   };
 
-  // Get display color for the ball preview
+  // Get display color for the ball or paddle preview
   const getBallColor = () => {
     if (skin.animated) {
       return skin.colors[0]; // Show first color for rainbow
@@ -119,17 +135,46 @@ export default function RewardRevealScreen({ route, navigation }) {
           ]}
         />
         
-        {/* Ball preview */}
-        <View
-          style={[
-            styles.ballPreview,
-            { backgroundColor: getBallColor() },
-          ]}
-        >
-          {skin.animated && (
-            <Ionicons name="color-palette" size={40} color="#FFF" />
-          )}
-        </View>
+        {/* Skin preview - Ball, Paddle, or Theme */}
+        {skin.type === 'paddle' ? (
+          <View
+            style={[
+              styles.paddlePreview,
+              { backgroundColor: getBallColor() },
+            ]}
+          >
+            {skin.animated && (
+              <Ionicons name="color-palette" size={24} color="#FFF" />
+            )}
+          </View>
+        ) : skin.type === 'theme' ? (
+          <View style={styles.themePreview}>
+            <View style={[styles.themeColorRow, { backgroundColor: skin.colors.background }]}>
+              <View style={[styles.themeColorDot, { backgroundColor: skin.colors.primary }]} />
+              <View style={[styles.themeColorDot, { backgroundColor: skin.colors.secondary }]} />
+            </View>
+            <View style={styles.themeColorRow}>
+              <View style={[styles.themeColorDot, { backgroundColor: skin.colors.accent }]} />
+              <View style={[styles.themeColorDot, { backgroundColor: skin.colors.surface }]} />
+            </View>
+            {skin.animated && (
+              <View style={styles.themeAnimatedOverlay}>
+                <Ionicons name="color-palette" size={32} color="#FFF" />
+              </View>
+            )}
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.ballPreview,
+              { backgroundColor: getBallColor() },
+            ]}
+          >
+            {skin.animated && (
+              <Ionicons name="color-palette" size={40} color="#FFF" />
+            )}
+          </View>
+        )}
       </Animated.View>
 
       {/* Skin Name */}
@@ -252,6 +297,49 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 20,
     elevation: 10,
+  },
+  paddlePreview: {
+    width: 150,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  themePreview: {
+    width: 150,
+    height: 120,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+    position: 'relative',
+  },
+  themeColorRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 3,
+  },
+  themeColorDot: {
+    flex: 1,
+    height: '100%',
+  },
+  themeAnimatedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   skinName: {
     fontSize: 32,

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Animated, Dimensions, StatusBar } from 'react-n
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { rollLootBox, getSlotIndexForRarity } from '../config/lootBoxes';
-import { RARITY_INFO, BALL_SKINS } from '../config/skins';
+import { RARITY_INFO, BALL_SKINS, PADDLE_SKINS, THEME_SKINS } from '../config/skins';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -33,6 +33,10 @@ export default function PlinkoScreen({ route, navigation }) {
   
   // Use ref to store reward so it's not lost during animation
   const rewardRef = useRef(null);
+  
+  // Determine skin collection based on box type
+  const box = require('../config/lootBoxes').LOOT_BOXES[boxId];
+  const SKIN_COLLECTION = box?.type === 'paddle' ? PADDLE_SKINS : box?.type === 'theme' ? THEME_SKINS : BALL_SKINS;
   
   const ballPosition = useRef(new Animated.ValueXY({ x: BOARD_WIDTH / 2, y: 0 })).current;
   const slotGlows = useRef(
@@ -141,8 +145,8 @@ export default function PlinkoScreen({ route, navigation }) {
         const landedRarity = SLOT_RARITIES[clampedSlotIndex];
         console.log('Ball landed in slot:', clampedSlotIndex, 'Rarity:', landedRarity);
         
-        // Get random skin of that rarity
-        const skinsOfRarity = Object.values(BALL_SKINS).filter(skin => skin.rarity === landedRarity);
+        // Get random skin of that rarity from the appropriate collection
+        const skinsOfRarity = Object.values(SKIN_COLLECTION).filter(skin => skin.rarity === landedRarity);
         const randomSkin = skinsOfRarity[Math.floor(Math.random() * skinsOfRarity.length)];
         
         const actualReward = {

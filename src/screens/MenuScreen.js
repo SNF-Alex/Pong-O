@@ -122,7 +122,7 @@ export default function MenuScreen({ navigation }) {
       <View style={styles.footer}>
         <View style={styles.tipContainer}>
           <Ionicons name="bulb" size={18} color={COLORS.primary} />
-          <Text style={styles.tipText}>Rally bonus: +5 coins every 5 hits!</Text>
+          <Text style={styles.tipText}>Rally bonus: +10 coins every 5 hits!</Text>
         </View>
       </View>
 
@@ -299,6 +299,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 30,
     paddingTop: 20,
+    marginBottom: 30,
   },
   tipContainer: {
     flexDirection: 'row',
@@ -320,9 +321,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(59, 130, 246, 0.15)',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
   navButton: {
     alignItems: 'center',

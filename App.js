@@ -6,6 +6,7 @@ import PlinkoScreen from './src/screens/PlinkoScreen';
 import RewardRevealScreen from './src/screens/RewardRevealScreen';
 import BackpackScreen from './src/screens/BackpackScreen';
 import { initializeDefaultData } from './src/utils/storage';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Menu');
@@ -35,23 +36,30 @@ export default function App() {
     params: screenParams
   };
 
-  // Render current screen
-  if (currentScreen === 'Menu') {
-    return <MenuScreen navigation={navigation} />;
-  } else if (currentScreen === 'Game') {
-    return <GameScreen route={route} navigation={navigation} />;
-  } else if (currentScreen === 'Shop') {
-    return <ShopScreen navigation={navigation} />;
-  } else if (currentScreen === 'Plinko') {
-    return <PlinkoScreen route={route} navigation={navigation} />;
-  } else if (currentScreen === 'RewardReveal') {
-    return <RewardRevealScreen route={route} navigation={navigation} />;
-  } else if (currentScreen === 'Backpack') {
-    return <BackpackScreen navigation={navigation} />;
-  } else if (currentScreen === 'Help') {
-    // TODO: Create Help screen
-    return <MenuScreen navigation={navigation} />;
-  }
+  const renderScreen = () => {
+    // Render current screen
+    if (currentScreen === 'Menu') {
+      return <MenuScreen navigation={navigation} />;
+    } else if (currentScreen === 'Game') {
+      return <GameScreen route={route} navigation={navigation} />;
+    } else if (currentScreen === 'Shop') {
+      return <ShopScreen route={route} navigation={navigation} />;
+    } else if (currentScreen === 'Plinko') {
+      return <PlinkoScreen route={route} navigation={navigation} />;
+    } else if (currentScreen === 'RewardReveal') {
+      return <RewardRevealScreen route={route} navigation={navigation} />;
+    } else if (currentScreen === 'Backpack') {
+      return <BackpackScreen route={route} navigation={navigation} />;
+    } else if (currentScreen === 'Help') {
+      // TODO: Create Help screen
+      return <MenuScreen navigation={navigation} />;
+    }
+    return null;
+  };
 
-  return null;
+  return (
+    <ThemeProvider>
+      {renderScreen()}
+    </ThemeProvider>
+  );
 }

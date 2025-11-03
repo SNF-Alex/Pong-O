@@ -3,25 +3,48 @@ import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { LOOT_BOXES } from '../config/lootBoxes';
+import { getCoins } from '../utils/storage';
 
-export default function ShopScreen({ route, navigation }) {
-  const [activeSection, setActiveSection] = useState(route?.params?.activeSection || 'balls'); // 'balls', 'paddles', 'themes'
+export default function ShopScreen({ route, navigation, onNavigate, params }) {
+  const [activeSection, setActiveSection] = useState(params?.activeSection || route?.params?.activeSection || 'balls'); // 'balls', 'paddles', 'themes'
+  const [coins, setCoins] = useState(0);
   
   const ballBox = LOOT_BOXES.basic_ball_box;
   const paddleBox = LOOT_BOXES.basic_paddle_box;
   const themeBox = LOOT_BOXES.basic_theme_box;
 
+  // Load coins
+  useEffect(() => {
+    loadCoins();
+  }, []);
+
+  // Reload coins periodically
+  useEffect(() => {
+    const interval = setInterval(loadCoins, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadCoins = async () => {
+    const currentCoins = await getCoins();
+    setCoins(currentCoins);
+  };
+
   // Update active section when navigation params change
   useEffect(() => {
-    if (route?.params?.activeSection) {
-      setActiveSection(route.params.activeSection);
+    const newSection = params?.activeSection || route?.params?.activeSection;
+    if (newSection) {
+      setActiveSection(newSection);
     }
-  }, [route?.params?.activeSection]);
+  }, [params?.activeSection, route?.params?.activeSection]);
 
   const handlePurchaseBox = (boxId) => {
     // TODO: Check if user has enough coins (when price is 1000)
     // For now, since price is 0, just navigate to Plinko
-    navigation.navigate('Plinko', { boxId });
+    if (onNavigate) {
+      onNavigate('Plinko', { boxId });
+    } else {
+      navigation.navigate('Plinko', { boxId });
+    }
   };
 
   const renderBoxCard = (box) => (
@@ -103,7 +126,7 @@ export default function ShopScreen({ route, navigation }) {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => onNavigate ? onNavigate('Menu') : navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
@@ -114,7 +137,10 @@ export default function ShopScreen({ route, navigation }) {
           <Text style={styles.subtitle}>Purchase Loot Boxes</Text>
         </View>
 
-        <View style={styles.backButton} />
+        <View style={styles.coinsDisplay}>
+          <Ionicons name="disc" size={18} color="#F59E0B" />
+          <Text style={styles.coinsAmount}>{coins}</Text>
+        </View>
       </View>
 
       {/* Section Tabs */}
@@ -224,6 +250,24 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     fontWeight: '500',
+  },
+  coinsDisplay: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(245, 158, 11, 0.15)', 
+    paddingHorizontal: 12, 
+    paddingVertical: 8, 
+    borderRadius: 16, 
+    gap: 6, 
+    borderWidth: 1, 
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    minWidth: 70
+  },
+  coinsAmount: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: '#F59E0B',
+    letterSpacing: 0.5 
   },
   sectionTabs: {
     flexDirection: 'row',

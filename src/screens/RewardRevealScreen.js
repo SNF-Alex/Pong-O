@@ -5,8 +5,9 @@ import { COLORS } from '../constants/gameConfig';
 import { RARITY_INFO } from '../config/skins';
 import { unlockSkin, unlockPaddleSkin, unlockTheme } from '../utils/storage';
 
-export default function RewardRevealScreen({ route, navigation }) {
-  const { skin, rarity } = route.params;
+export default function RewardRevealScreen({ route, navigation, onNavigate, params }) {
+  const skin = params?.skin || route?.params?.skin;
+  const rarity = params?.rarity || route?.params?.rarity;
   const rarityInfo = RARITY_INFO[rarity];
   
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -50,13 +51,25 @@ export default function RewardRevealScreen({ route, navigation }) {
     // Save skin to AsyncStorage based on type
     if (skin.type === 'paddle') {
       await unlockPaddleSkin(skin.id);
-      navigation.navigate('Shop', { activeSection: 'paddles' });
+      if (onNavigate) {
+        onNavigate('Shop', { activeSection: 'paddles' });
+      } else {
+        navigation.navigate('Shop', { activeSection: 'paddles' });
+      }
     } else if (skin.type === 'theme') {
       await unlockTheme(skin.id);
-      navigation.navigate('Shop', { activeSection: 'themes' });
+      if (onNavigate) {
+        onNavigate('Shop', { activeSection: 'themes' });
+      } else {
+        navigation.navigate('Shop', { activeSection: 'themes' });
+      }
     } else {
       await unlockSkin(skin.id);
-      navigation.navigate('Shop', { activeSection: 'balls' });
+      if (onNavigate) {
+        onNavigate('Shop', { activeSection: 'balls' });
+      } else {
+        navigation.navigate('Shop', { activeSection: 'balls' });
+      }
     }
   };
 
@@ -64,13 +77,25 @@ export default function RewardRevealScreen({ route, navigation }) {
     // Save skin to AsyncStorage first
     if (skin.type === 'paddle') {
       await unlockPaddleSkin(skin.id);
-      navigation.navigate('Backpack', { activeSection: 'paddles' });
+      if (onNavigate) {
+        onNavigate('Backpack', { activeSection: 'paddles' });
+      } else {
+        navigation.navigate('Backpack', { activeSection: 'paddles' });
+      }
     } else if (skin.type === 'theme') {
       await unlockTheme(skin.id);
-      navigation.navigate('Backpack', { activeSection: 'themes' });
+      if (onNavigate) {
+        onNavigate('Backpack', { activeSection: 'themes' });
+      } else {
+        navigation.navigate('Backpack', { activeSection: 'themes' });
+      }
     } else {
       await unlockSkin(skin.id);
-      navigation.navigate('Backpack', { activeSection: 'balls' });
+      if (onNavigate) {
+        onNavigate('Backpack', { activeSection: 'balls' });
+      } else {
+        navigation.navigate('Backpack', { activeSection: 'balls' });
+      }
     }
   };
 

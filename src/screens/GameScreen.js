@@ -17,7 +17,7 @@ import {
   updateAI,
   updatePlayerPaddle,
 } from '../utils/gameEngine';
-import { getEquippedBallSkin, getEquippedPaddleSkin } from '../utils/storage';
+import { getEquippedBallSkin, getEquippedPaddleSkin, addCoins, getControlStyle, setControlStyle as saveControlStyle, getControlPosition, setControlPosition as saveControlPosition } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -27,8 +27,8 @@ const SCORE_HEIGHT = 120;
 const CONTROLS_HEIGHT = 140;
 const PLAYABLE_HEIGHT = SCREEN_HEIGHT - SCORE_HEIGHT - CONTROLS_HEIGHT;
 
-export default function GameScreen({ route, navigation }) {
-  const { difficulty } = route.params;
+export default function GameScreen({ route, navigation, onNavigate, params }) {
+  const difficulty = params?.difficulty || route?.params?.difficulty || 'medium';
   const { colors } = useTheme();
   
   const [gameState, setGameState] = useState(() =>
@@ -59,7 +59,15 @@ export default function GameScreen({ route, navigation }) {
   useEffect(() => {
     loadBallSkin();
     loadPaddleSkin();
+    loadControlSettings();
   }, []);
+
+  const loadControlSettings = async () => {
+    const style = await getControlStyle();
+    const position = await getControlPosition();
+    setControlStyle(style);
+    setControlPosition(position);
+  };
 
   const loadBallSkin = async () => {
     const skin = await getEquippedBallSkin();
@@ -275,6 +283,13 @@ export default function GameScreen({ route, navigation }) {
     }
   }, [gameState.isPaused, gameState.gameOver]);
 
+  // Save coins when game ends
+  useEffect(() => {
+    if (gameState.gameOver && gameState.totalCoins > 0) {
+      addCoins(gameState.totalCoins);
+    }
+  }, [gameState.gameOver, gameState.totalCoins]);
+
   const togglePause = () => {
     setGameState((prev) => ({ ...prev, isPaused: !prev.isPaused }));
   };
@@ -307,8 +322,17 @@ export default function GameScreen({ route, navigation }) {
     setGameState(initializeGame(SCREEN_WIDTH, PLAYABLE_HEIGHT, difficulty));
   };
 
-  const goToMenu = () => {
-    navigation.goBack();
+  const goToMenu = async () => {
+    // Save coins before leaving
+    if (gameState.totalCoins > 0) {
+      await addCoins(gameState.totalCoins);
+    }
+    
+    if (onNavigate) {
+      onNavigate('Menu');
+    } else if (navigation) {
+      navigation.goBack();
+    }
   };
 
   const getPositionDisplayName = (position) => {
@@ -322,18 +346,20 @@ export default function GameScreen({ route, navigation }) {
     return names[position] || 'Bottom Right';
   };
 
-  const selectPosition = (position) => {
+  const selectPosition = async (position) => {
     setControlPosition(position);
     setShowPositionDropdown(false);
+    await saveControlPosition(position);
   };
 
   const getStyleDisplayName = (style) => {
     return style === 'arrows' ? 'Arrow Buttons' : 'Drag';
   };
 
-  const selectControlStyle = (style) => {
+  const selectControlStyle = async (style) => {
     setControlStyle(style);
     setShowStyleDropdown(false);
+    await saveControlStyle(style);
   };
 
   const styles = getStyles(colors);
@@ -414,10 +440,10 @@ export default function GameScreen({ route, navigation }) {
       {/* Control Buttons */}
       <View style={styles.controls}>
         <TouchableOpacity style={styles.controlButton} onPress={goToMenu}>
-          <Ionicons name="home" size={32} color={COLORS.text} />
+          <Ionicons name="home" size={32} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.controlButton} onPress={openSettings}>
-          <Ionicons name="settings" size={32} color={COLORS.text} />
+          <Ionicons name="settings" size={32} color={colors.primary} />
         </TouchableOpacity>
       </View>
 

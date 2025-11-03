@@ -11,6 +11,8 @@ const KEYS = {
   EQUIPPED_PADDLE: '@ponggame:equipped_paddle',
   EQUIPPED_THEME: '@ponggame:equipped_theme',
   THEME_VARIANT: '@ponggame:theme_variant',
+  CONTROL_STYLE: '@ponggame:control_style',
+  CONTROL_POSITION: '@ponggame:control_position',
 };
 
 // ============ COINS ============
@@ -397,6 +399,221 @@ export const initializeDefaultData = async () => {
     return true;
   } catch (error) {
     console.error('Error initializing default data:', error);
+    return false;
+  }
+};
+
+// ============ CLOUD SYNC ============
+
+// Get all user data for cloud backup
+export const getAllUserData = async () => {
+  try {
+    const [
+      coins,
+      unlockedSkins,
+      unlockedPaddles,
+      unlockedThemes,
+      equippedBall,
+      equippedPaddle,
+      equippedTheme,
+    ] = await Promise.all([
+      getCoins(),
+      getUnlockedSkins(),
+      getUnlockedPaddleSkins(),
+      getUnlockedThemes(),
+      getEquippedBall(),
+      getEquippedPaddle(),
+      getEquippedTheme(),
+    ]);
+
+    // Get all theme variants
+    const themeVariants = {};
+    for (const themeId of unlockedThemes) {
+      const variant = await getThemeVariant(themeId);
+      if (variant) {
+        themeVariants[themeId] = variant;
+      }
+    }
+
+    return {
+      coins,
+      unlockedSkins,
+      unlockedPaddles,
+      unlockedThemes,
+      equippedBall,
+      equippedPaddle,
+      equippedTheme,
+      themeVariants,
+      lastUpdated: Date.now(),
+      version: '1.0.0',
+    };
+  } catch (error) {
+    console.error('Error getting all user data:', error);
+    return null;
+  }
+};
+
+// Restore user data from cloud backup
+export const restoreUserData = async (userData) => {
+  try {
+    if (!userData) {
+      console.warn('No user data to restore');
+      return false;
+    }
+
+    // Restore coins
+    if (typeof userData.coins === 'number') {
+      await setCoins(userData.coins);
+    }
+
+    // Restore unlocked items
+    if (Array.isArray(userData.unlockedSkins)) {
+      await AsyncStorage.setItem(KEYS.UNLOCKED_SKINS, JSON.stringify(userData.unlockedSkins));
+    }
+    if (Array.isArray(userData.unlockedPaddles)) {
+      await AsyncStorage.setItem(KEYS.UNLOCKED_PADDLES, JSON.stringify(userData.unlockedPaddles));
+    }
+    if (Array.isArray(userData.unlockedThemes)) {
+      await AsyncStorage.setItem(KEYS.UNLOCKED_THEMES, JSON.stringify(userData.unlockedThemes));
+    }
+
+    // Restore equipped items
+    if (userData.equippedBall) {
+      await AsyncStorage.setItem(KEYS.EQUIPPED_BALL, userData.equippedBall);
+    }
+    if (userData.equippedPaddle) {
+      await AsyncStorage.setItem(KEYS.EQUIPPED_PADDLE, userData.equippedPaddle);
+    }
+    if (userData.equippedTheme) {
+      await AsyncStorage.setItem(KEYS.EQUIPPED_THEME, userData.equippedTheme);
+    }
+
+    // Restore theme variants
+    if (userData.themeVariants) {
+      for (const [themeId, variant] of Object.entries(userData.themeVariants)) {
+        await setThemeVariant(themeId, variant);
+      }
+    }
+
+    console.log('User data restored successfully from cloud');
+    return true;
+  } catch (error) {
+    console.error('Error restoring user data:', error);
+    return false;
+  }
+};
+
+// Upload user data to cloud (placeholder for actual cloud implementation)
+export const uploadToCloud = async (userId, userData) => {
+  try {
+    // TODO: Implement actual cloud upload
+    // For iOS: Use iCloud Key-Value Storage or CloudKit
+    // For Android: Use Google Play Games Services saved games
+    
+    // For now, just store a timestamp of last sync
+    await AsyncStorage.setItem('@ponggame:last_cloud_sync', Date.now().toString());
+    
+    console.log('Cloud upload placeholder:', userId, userData);
+    return true;
+  } catch (error) {
+    console.error('Error uploading to cloud:', error);
+    return false;
+  }
+};
+
+// Download user data from cloud (placeholder for actual cloud implementation)
+export const downloadFromCloud = async (userId) => {
+  try {
+    // TODO: Implement actual cloud download
+    // For iOS: Use iCloud Key-Value Storage or CloudKit
+    // For Android: Use Google Play Games Services saved games
+    
+    console.log('Cloud download placeholder for user:', userId);
+    return null; // Return null if no cloud data exists
+  } catch (error) {
+    console.error('Error downloading from cloud:', error);
+    return null;
+  }
+};
+
+// Sync user data with cloud
+export const syncWithCloud = async (userId) => {
+  try {
+    if (!userId) {
+      console.warn('No user ID provided for cloud sync');
+      return false;
+    }
+
+    // Get local data
+    const localData = await getAllUserData();
+    if (!localData) {
+      console.warn('No local data to sync');
+      return false;
+    }
+
+    // Download cloud data
+    const cloudData = await downloadFromCloud(userId);
+
+    // If no cloud data exists, upload local data
+    if (!cloudData) {
+      console.log('No cloud data found, uploading local data');
+      return await uploadToCloud(userId, localData);
+    }
+
+    // Compare timestamps and use most recent data
+    if (cloudData.lastUpdated > localData.lastUpdated) {
+      console.log('Cloud data is newer, restoring from cloud');
+      await restoreUserData(cloudData);
+    } else {
+      console.log('Local data is newer, uploading to cloud');
+      await uploadToCloud(userId, localData);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error syncing with cloud:', error);
+    return false;
+  }
+};
+
+// ============ GAME CONTROLS ============
+
+export const getControlStyle = async () => {
+  try {
+    const style = await AsyncStorage.getItem(KEYS.CONTROL_STYLE);
+    return style || 'arrows'; // default to arrows
+  } catch (error) {
+    console.error('Error loading control style:', error);
+    return 'arrows';
+  }
+};
+
+export const setControlStyle = async (style) => {
+  try {
+    await AsyncStorage.setItem(KEYS.CONTROL_STYLE, style);
+    return true;
+  } catch (error) {
+    console.error('Error saving control style:', error);
+    return false;
+  }
+};
+
+export const getControlPosition = async () => {
+  try {
+    const position = await AsyncStorage.getItem(KEYS.CONTROL_POSITION);
+    return position || 'bottom-right'; // default
+  } catch (error) {
+    console.error('Error loading control position:', error);
+    return 'bottom-right';
+  }
+};
+
+export const setControlPosition = async (position) => {
+  try {
+    await AsyncStorage.setItem(KEYS.CONTROL_POSITION, position);
+    return true;
+  } catch (error) {
+    console.error('Error saving control position:', error);
     return false;
   }
 };

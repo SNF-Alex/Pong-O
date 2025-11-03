@@ -3,10 +3,10 @@ import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView, Alert,
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { BALL_SKINS, PADDLE_SKINS, THEME_SKINS, RARITY_INFO } from '../config/skins';
-import { getUnlockedSkins, getEquippedBall, equipBall, getUnlockedPaddleSkins, getEquippedPaddle, equipPaddle, getUnlockedThemes, getEquippedTheme, equipTheme, getThemeVariant, setThemeVariant } from '../utils/storage';
+import { getUnlockedSkins, getEquippedBall, equipBall, getUnlockedPaddleSkins, getEquippedPaddle, equipPaddle, getUnlockedThemes, getEquippedTheme, equipTheme, getThemeVariant, setThemeVariant, getCoins } from '../utils/storage';
 import { useTheme } from '../contexts/ThemeContext';
 
-export default function BackpackScreen({ route, navigation }) {
+export default function BackpackScreen({ route, navigation, onNavigate, params }) {
   const { refreshTheme } = useTheme();
   const [unlockedSkinIds, setUnlockedSkinIds] = useState([]);
   const [equippedBallId, setEquippedBallId] = useState('ball_red');
@@ -14,11 +14,12 @@ export default function BackpackScreen({ route, navigation }) {
   const [equippedPaddleId, setEquippedPaddleId] = useState('paddle_red');
   const [unlockedThemeIds, setUnlockedThemeIds] = useState([]);
   const [equippedThemeId, setEquippedThemeId] = useState('theme_default');
+  const [coins, setCoins] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('rarity');
   const [sortDirection, setSortDirection] = useState('desc');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState(route?.params?.activeSection || 'balls');
+  const [activeSection, setActiveSection] = useState(params?.activeSection || route?.params?.activeSection || 'balls');
   const [variantModalVisible, setVariantModalVisible] = useState(false);
   const [selectedThemeForVariant, setSelectedThemeForVariant] = useState(null);
   const [currentVariant, setCurrentVariant] = useState('pink');
@@ -27,12 +28,22 @@ export default function BackpackScreen({ route, navigation }) {
     loadInventory();
   }, []);
 
+  // Reload coins periodically
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const currentCoins = await getCoins();
+      setCoins(currentCoins);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Update active section when navigation params change
   useEffect(() => {
-    if (route?.params?.activeSection) {
-      setActiveSection(route.params.activeSection);
+    const newSection = params?.activeSection || route?.params?.activeSection;
+    if (newSection) {
+      setActiveSection(newSection);
     }
-  }, [route?.params?.activeSection]);
+  }, [params?.activeSection, route?.params?.activeSection]);
 
   const loadInventory = async () => {
     setLoading(true);
@@ -43,11 +54,13 @@ export default function BackpackScreen({ route, navigation }) {
       const equippedPaddle = await getEquippedPaddle();
       const unlockedThemes = await getUnlockedThemes();
       const equippedTheme = await getEquippedTheme();
+      const currentCoins = await getCoins();
       setUnlockedSkinIds(unlocked);
       setEquippedBallId(equipped);
       setUnlockedPaddleIds(unlockedPaddles);
       setEquippedPaddleId(equippedPaddle);
       setUnlockedThemeIds(unlockedThemes);
+      setCoins(currentCoins);
       setEquippedThemeId(equippedTheme);
     } catch (error) {
       console.error('Error loading inventory:', error);
@@ -369,8 +382,19 @@ export default function BackpackScreen({ route, navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
+      {/* Coins Display at Top */}
+      <View style={styles.coinsContainer}>
+        <View style={styles.coinsDisplay}>
+          <Ionicons name="disc" size={20} color="#F59E0B" />
+          <Text style={styles.coinsAmount}>{coins}</Text>
+        </View>
+      </View>
+
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => onNavigate ? onNavigate('Menu') : navigation.goBack()}
+        >
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         
@@ -579,8 +603,35 @@ export default function BackpackScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20 },
+  container: { flex: 1, backgroundColor: COLORS.background, paddingTop: 60 },
+  coinsContainer: { 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingBottom: 12 
+  },
+  coinsDisplay: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(245, 158, 11, 0.15)', 
+    paddingHorizontal: 16, 
+    paddingVertical: 9, 
+    borderRadius: 20, 
+    gap: 7, 
+    borderWidth: 1.5, 
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  coinsAmount: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#F59E0B',
+    letterSpacing: 1 
+  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, paddingHorizontal: 20, paddingTop: 10 },
   backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerContent: { flex: 1, alignItems: 'center' },
   title: { fontSize: 32, fontWeight: '300', color: COLORS.text, letterSpacing: 8, marginBottom: 6 },

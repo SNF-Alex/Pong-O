@@ -1,13 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
+import { useAuth } from '../contexts/AuthContext';
+import { getCoins, getUnlockedSkins, getUnlockedPaddleSkins, getUnlockedThemes } from '../utils/storage';
 
-export default function MenuScreen({ navigation }) {
+const HINTS = [
+  "Rally bonus: +10 coins every 5 hits!",
+  "You can get different skins by opening a box in the shop",
+  "You get more coins the harder the AI",
+  "Sign in to protect your progress across devices",
+  "Legendary themes have customizable color variants"
+];
+
+export default function MenuScreen({ navigation, onNavigate }) {
   const [expandedMode, setExpandedMode] = useState(null);
+  const [showSignInBanner, setShowSignInBanner] = useState(false);
+  const [coins, setCoins] = useState(0);
+  const [currentHintIndex, setCurrentHintIndex] = useState(0);
+  const { user, isSignedIn } = useAuth();
+
+  useEffect(() => {
+    loadCoins();
+    checkIfShouldShowBanner();
+  }, []);
+
+  // Reload coins when screen is focused
+  useEffect(() => {
+    const interval = setInterval(loadCoins, 1000); // Refresh coins every second
+    return () => clearInterval(interval);
+  }, []);
+
+  // Rotate hints every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentHintIndex((prev) => (prev + 1) % HINTS.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadCoins = async () => {
+    const currentCoins = await getCoins();
+    setCoins(currentCoins);
+  };
+
+  const checkIfShouldShowBanner = async () => {
+    if (isSignedIn) {
+      setShowSignInBanner(false);
+      return;
+    }
+
+    // Check if user has significant progress
+    const coins = await getCoins();
+    const unlockedSkins = await getUnlockedSkins();
+    const unlockedPaddles = await getUnlockedPaddleSkins();
+    const unlockedThemes = await getUnlockedThemes();
+
+    const totalUnlocked = unlockedSkins.length + unlockedPaddles.length + unlockedThemes.length;
+
+    // Show banner if user has coins > 50 or has unlocked more than 5 items
+    if (coins > 50 || totalUnlocked > 5) {
+      setShowSignInBanner(true);
+    }
+  };
 
   const startGame = (difficulty) => {
-    navigation.navigate('Game', { difficulty });
+    onNavigate('Game', { difficulty });
   };
 
   const toggleMode = (mode) => {
@@ -24,6 +82,35 @@ export default function MenuScreen({ navigation }) {
         <View style={styles.divider} />
         <Text style={styles.subtitle}>Choose Your Challenge</Text>
       </View>
+
+      {/* Sign-in Banner */}
+      {showSignInBanner && (
+        <View style={styles.signInBanner}>
+          <View style={styles.signInBannerContent}>
+            <Ionicons name="cloud-upload-outline" size={24} color={COLORS.primary} />
+            <View style={styles.signInTextContainer}>
+              <Text style={styles.signInBannerTitle}>Protect Your Progress</Text>
+              <Text style={styles.signInBannerSubtitle}>
+                Sign in to save your data across devices
+              </Text>
+            </View>
+          </View>
+          <View style={styles.signInBannerButtons}>
+            <TouchableOpacity 
+              style={styles.signInButton}
+              onPress={() => onNavigate('SignIn')}
+            >
+              <Text style={styles.signInButtonText}>Sign In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.dismissButton}
+              onPress={() => setShowSignInBanner(false)}
+            >
+              <Text style={styles.dismissButtonText}>Later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Game Modes */}
       <View style={styles.modesContainer}>
@@ -118,11 +205,19 @@ export default function MenuScreen({ navigation }) {
 
       </View>
 
+      {/* Coins Display Above Tab Bar */}
+      <View style={styles.coinsContainer}>
+        <View style={styles.coinsDisplay}>
+          <Ionicons name="disc" size={22} color="#F59E0B" />
+          <Text style={styles.coinsAmount}>{coins}</Text>
+        </View>
+      </View>
+
       {/* Footer Tip */}
       <View style={styles.footer}>
         <View style={styles.tipContainer}>
           <Ionicons name="bulb" size={18} color={COLORS.primary} />
-          <Text style={styles.tipText}>Rally bonus: +10 coins every 5 hits!</Text>
+          <Text style={styles.tipText}>{HINTS[currentHintIndex]}</Text>
         </View>
       </View>
 
@@ -130,7 +225,7 @@ export default function MenuScreen({ navigation }) {
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={styles.navButton}
-          onPress={() => navigation.navigate('Shop')}
+          onPress={() => onNavigate('Shop')}
           activeOpacity={0.7}
         >
           <Ionicons name="storefront-outline" size={28} color={COLORS.primary} />
@@ -139,7 +234,7 @@ export default function MenuScreen({ navigation }) {
 
         <TouchableOpacity
           style={styles.navButton}
-          onPress={() => navigation.navigate('Backpack')}
+          onPress={() => onNavigate('Backpack')}
           activeOpacity={0.7}
         >
           <Ionicons name="bag-outline" size={28} color={COLORS.primary} />
@@ -148,7 +243,7 @@ export default function MenuScreen({ navigation }) {
 
         <TouchableOpacity
           style={styles.navButton}
-          onPress={() => navigation.navigate('Help')}
+          onPress={() => onNavigate('Help')}
           activeOpacity={0.7}
         >
           <Ionicons name="help-circle-outline" size={28} color={COLORS.primary} />
@@ -176,7 +271,6 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     color: COLORS.text,
     letterSpacing: 12,
-    marginBottom: 8,
   },
   divider: {
     width: 60,
@@ -296,10 +390,37 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F59E0B',
   },
+  coinsContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    marginBottom: 16,
+  },
+  coinsDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  coinsAmount: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#F59E0B',
+    letterSpacing: 1,
+  },
   footer: {
     paddingHorizontal: 30,
     paddingTop: 20,
-    marginBottom: 30,
+    marginBottom: 16,
   },
   tipContainer: {
     flexDirection: 'row',
@@ -310,11 +431,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     gap: 8,
+    minHeight: 44,
   },
   tipText: {
     fontSize: 13,
     color: COLORS.textSecondary,
     fontWeight: '500',
+    flex: 1,
+    textAlign: 'center',
+  },
+  signInBanner: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  signInBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  signInTextContainer: {
+    flex: 1,
+  },
+  signInBannerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  signInBannerSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  signInBannerButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  signInButton: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  signInButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  dismissButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dismissButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
   bottomNav: {
     flexDirection: 'row',

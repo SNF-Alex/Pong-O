@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
-import { rollLootBox, getSlotIndexForRarity } from '../config/lootBoxes';
+import { rollLootBox } from '../config/lootBoxes';
 import { RARITY_INFO, BALL_SKINS, PADDLE_SKINS, THEME_SKINS } from '../config/skins';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -24,11 +24,12 @@ const SLOT_RARITIES = [
   'common', 'uncommon', 'common', 'common', 'rare', 'common', 'common', 'uncommon', 'common'
 ];
 
-export default function PlinkoScreen({ route, navigation }) {
-  const { boxId } = route.params;
+export default function PlinkoScreen({ route, navigation, onNavigate, params }) {
+  // Support both custom onNavigate pattern and React Navigation route
+  const boxId = (params && params.boxId) || (route && route.params && route.params.boxId);
   
-  const [reward, setReward] = useState(null);
-  const [targetSlot, setTargetSlot] = useState(null);
+  const [reward, setReward] = useState(null); // { skin, rarity }
+  const [targetSlotIndex, setTargetSlotIndex] = useState(null);
   const [isDropping, setIsDropping] = useState(false);
   
   // Use ref to store reward so it's not lost during animation
@@ -44,25 +45,55 @@ export default function PlinkoScreen({ route, navigation }) {
   ).current;
 
   useEffect(() => {
-    // Don't determine reward yet - let physics decide where ball lands first
-    // Just start the drop animation
-    setTimeout(() => {
-      startDrop();
-    }, 500);
+    if (!boxId) {
+      console.warn('PlinkoScreen: Missing boxId. Returning to Shop.');
+      if (onNavigate) {
+        onNavigate('Shop');
+      } else if (navigation && navigation.goBack) {
+        navigation.goBack();
+      }
+      return;
+    }
+
+    // Roll reward based on configured odds
+    const result = rollLootBox(boxId);
+    if (!result) {
+      if (onNavigate) {
+        onNavigate('Shop');
+      } else if (navigation && navigation.goBack) {
+        navigation.goBack();
+      }
+      return;
+    }
+    setReward(result);
+    rewardRef.current = result;
+
+    // Choose a slot of the same rarity to land in (purely visual)
+    const candidates = SLOT_RARITIES.map((r, i) => (r === result.rarity ? i : -1)).filter((i) => i >= 0);
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    setTargetSlotIndex(chosen);
+
+    const t = setTimeout(() => startDrop(chosen), 480);
+    return () => clearTimeout(t);
   }, [boxId]);
 
-  const startDrop = () => {
+  const startDrop = (slotIndex) => {
+    if (slotIndex == null) return;
     setIsDropping(true);
     
-    // Physics simulation variables
+    // Physics simulation variables with gentle steering toward target slot
     let currentX = BOARD_WIDTH / 2;
     let currentY = 20;
-    let velocityX = (Math.random() - 0.5) * 0.3; // Reduced from 0.5 - slower initial horizontal
-    let velocityY = 0.2; // Reduced from 0.5 - slower start
+    let velocityX = (Math.random() - 0.5) * 0.25;
+    let velocityY = 0.18;
     
-    const gravity = 0.15; // Reduced from 0.3 - slower fall
-    const restitution = 0.5; // Reduced from 0.6 - less bouncy, loses more energy
-    const friction = 0.05; // Increased from 0.02 - more air resistance
+    const gravity = 0.16;
+    const restitution = 0.48;
+    const friction = 0.045;
+    const steer = 0.0022; // horizontal steering factor
+    const maxVX = BOARD_WIDTH * 0.02;
+    const maxVY = BOARD_HEIGHT * 0.025;
+    const targetX = (slotIndex + 0.5) * SLOT_WIDTH;
     
     // Get peg positions
     const pegPositions = generatePegs();
@@ -74,11 +105,20 @@ export default function PlinkoScreen({ route, navigation }) {
       
       // Apply air resistance
       velocityX *= (1 - friction);
-      velocityY *= (1 - friction * 0.5); // Less air resistance on Y
+      velocityY *= (1 - friction * 0.5);
+
+      // Soft steering to target, stronger deeper down the board
+      const progress = Math.min(1, Math.max(0, (currentY - 40) / (BOARD_HEIGHT - 120)));
+      const steerAccel = (targetX - currentX) * steer * (0.3 + progress * 0.7);
+      velocityX += steerAccel;
       
       // Update position
       currentX += velocityX;
       currentY += velocityY;
+
+      // Clamp to avoid extreme jumps
+      velocityX = Math.max(-maxVX, Math.min(maxVX, velocityX));
+      velocityY = Math.max(-maxVY, Math.min(maxVY, velocityY));
       
       // Check collision with each peg
       pegPositions.forEach((peg) => {
@@ -109,8 +149,8 @@ export default function PlinkoScreen({ route, navigation }) {
             velocityX += impulse * nx;
             velocityY += impulse * ny;
             
-            // Add slight random deflection for variety
-            velocityX += (Math.random() - 0.5) * 1.0; // Reduced from 1.5 - less random force
+            // Tiny random deflection for variety
+            velocityX += (Math.random() - 0.5) * 0.25;
             
             // Extra damping on collision to slow it down
             velocityX *= 0.85;
@@ -136,26 +176,9 @@ export default function PlinkoScreen({ route, navigation }) {
       if (currentY >= BOARD_HEIGHT - 65) {
         clearInterval(physicsInterval);
         
-        // Determine which slot the ball actually landed in
-        const actualSlotIndex = Math.floor(currentX / SLOT_WIDTH);
-        const clampedSlotIndex = Math.max(0, Math.min(SLOT_COUNT - 1, actualSlotIndex));
-        const finalX = (clampedSlotIndex + 0.5) * SLOT_WIDTH;
-        
-        // NOW determine reward based on where ball actually landed
-        const landedRarity = SLOT_RARITIES[clampedSlotIndex];
-        console.log('Ball landed in slot:', clampedSlotIndex, 'Rarity:', landedRarity);
-        
-        // Get random skin of that rarity from the appropriate collection
-        const skinsOfRarity = Object.values(SKIN_COLLECTION).filter(skin => skin.rarity === landedRarity);
-        const randomSkin = skinsOfRarity[Math.floor(Math.random() * skinsOfRarity.length)];
-        
-        const actualReward = {
-          skin: randomSkin,
-          rarity: landedRarity,
-        };
-        
-        setReward(actualReward);
-        rewardRef.current = actualReward;
+        // Snap visually to selected target slot
+        const clampedIndex = Math.max(0, Math.min(SLOT_COUNT - 1, slotIndex));
+        const finalX = (clampedIndex + 0.5) * SLOT_WIDTH;
         
         // Snap to final slot position
         Animated.spring(ballPosition, {
@@ -166,7 +189,7 @@ export default function PlinkoScreen({ route, navigation }) {
         }).start(() => {
           // Animate the slot that ball actually landed in
           Animated.sequence([
-            Animated.timing(slotGlows[clampedSlotIndex], {
+            Animated.timing(slotGlows[clampedIndex], {
               toValue: 1,
               duration: 300,
               useNativeDriver: false,
@@ -174,14 +197,21 @@ export default function PlinkoScreen({ route, navigation }) {
             Animated.delay(500),
           ]).start(() => {
             // Navigate to reward reveal
-            if (actualReward && actualReward.skin) {
-              navigation.replace('RewardReveal', { 
-                skin: actualReward.skin,
-                rarity: actualReward.rarity,
-              });
+            if (rewardRef.current && rewardRef.current.skin) {
+              if (onNavigate) {
+                onNavigate('RewardReveal', { skin: rewardRef.current.skin, rarity: rewardRef.current.rarity });
+              } else if (navigation && navigation.replace) {
+                navigation.replace('RewardReveal', { skin: rewardRef.current.skin, rarity: rewardRef.current.rarity });
+              } else if (navigation && navigation.navigate) {
+                navigation.navigate('RewardReveal', { skin: rewardRef.current.skin, rarity: rewardRef.current.rarity });
+              }
             } else {
               console.error('Reward is null when trying to navigate');
-              navigation.goBack();
+              if (onNavigate) {
+                onNavigate('Shop');
+              } else if (navigation && navigation.goBack) {
+                navigation.goBack();
+              }
             }
           });
         });

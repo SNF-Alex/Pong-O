@@ -13,7 +13,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.snfalex.pongo"
+      "bundleIdentifier": "com.snfalex.pongo",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSUserTrackingUsageDescription": "This app uses Game Center to save your progress across devices.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,11 +30,16 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-apple-authentication"
+      ]
+    ],
     "extra": {
       "eas": {
-        "projectId": "your-project-id-here"
+        "projectId": "98999d7a-f598-4346-aeca-753f4f84a31b"
       }
     },
-    "plugins": []
+    "owner": "snf.alex"
   }
 }

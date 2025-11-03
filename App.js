@@ -5,11 +5,15 @@ import ShopScreen from './src/screens/ShopScreen';
 import PlinkoScreen from './src/screens/PlinkoScreen';
 import RewardRevealScreen from './src/screens/RewardRevealScreen';
 import BackpackScreen from './src/screens/BackpackScreen';
+import SignInScreen from './src/screens/SignInScreen';
+import HelpScreen from './src/screens/HelpScreen';
 import { initializeDefaultData } from './src/utils/storage';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 
-export default function App() {
-  const [currentScreen, setCurrentScreen] = useState('Menu');
+function AppNavigator() {
+  const { loading, isSignedIn, hasSeenWarning } = useAuth();
+  const [currentScreen, setCurrentScreen] = useState('Loading');
   const [screenParams, setScreenParams] = useState({});
 
   // Initialize default data on app start
@@ -17,49 +21,68 @@ export default function App() {
     initializeDefaultData();
   }, []);
 
-  const navigation = {
-    navigate: (screenName, params = {}) => {
-      setScreenParams(params);
-      setCurrentScreen(screenName);
-    },
-    replace: (screenName, params = {}) => {
-      setScreenParams(params);
-      setCurrentScreen(screenName);
-    },
-    goBack: () => {
-      setCurrentScreen('Menu');
-      setScreenParams({});
-    },
-  };
+  // Determine initial screen after auth loads
+  useEffect(() => {
+    if (!loading) {
+      if (!isSignedIn && !hasSeenWarning) {
+        setCurrentScreen('SignIn');
+      } else if (currentScreen === 'Loading' || currentScreen === 'SignIn') {
+        setCurrentScreen('Menu');
+      }
+    }
+  }, [loading, isSignedIn, hasSeenWarning]);
 
-  const route = {
-    params: screenParams
+  // Auto-navigate to Menu when user signs in
+  useEffect(() => {
+    if (!loading && isSignedIn && currentScreen === 'SignIn') {
+      setCurrentScreen('Menu');
+    }
+  }, [isSignedIn, loading]);
+
+  const handleNavigate = (screenName, params = {}) => {
+    setScreenParams(params);
+    setCurrentScreen(screenName);
   };
 
   const renderScreen = () => {
-    // Render current screen
-    if (currentScreen === 'Menu') {
-      return <MenuScreen navigation={navigation} />;
-    } else if (currentScreen === 'Game') {
-      return <GameScreen route={route} navigation={navigation} />;
-    } else if (currentScreen === 'Shop') {
-      return <ShopScreen route={route} navigation={navigation} />;
-    } else if (currentScreen === 'Plinko') {
-      return <PlinkoScreen route={route} navigation={navigation} />;
-    } else if (currentScreen === 'RewardReveal') {
-      return <RewardRevealScreen route={route} navigation={navigation} />;
-    } else if (currentScreen === 'Backpack') {
-      return <BackpackScreen route={route} navigation={navigation} />;
-    } else if (currentScreen === 'Help') {
-      // TODO: Create Help screen
-      return <MenuScreen navigation={navigation} />;
+    if (loading || currentScreen === 'Loading') {
+      // Could add a loading screen component here
+      return null;
     }
-    return null;
+
+    switch (currentScreen) {
+      case 'SignIn':
+        return <SignInScreen onNavigate={handleNavigate} />;
+      case 'Menu':
+        return <MenuScreen onNavigate={handleNavigate} />;
+      case 'Game':
+        return <GameScreen onNavigate={handleNavigate} params={screenParams} />;
+      case 'Shop':
+        return <ShopScreen onNavigate={handleNavigate} params={screenParams} />;
+      case 'Plinko':
+        return <PlinkoScreen onNavigate={handleNavigate} params={screenParams} />;
+      case 'RewardReveal':
+        return <RewardRevealScreen onNavigate={handleNavigate} params={screenParams} />;
+      case 'Backpack':
+        return <BackpackScreen onNavigate={handleNavigate} params={screenParams} />;
+      case 'Help':
+        return <HelpScreen onNavigate={handleNavigate} />;
+      default:
+        return <MenuScreen onNavigate={handleNavigate} />;
+    }
   };
 
   return (
     <ThemeProvider>
       {renderScreen()}
     </ThemeProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppNavigator />
+    </AuthProvider>
   );
 }

@@ -7,7 +7,7 @@ export const LOOT_BOXES = {
     name: 'Basic Ball Box',
     type: 'ball',
     description: 'Contains all 10 ball skins',
-    price: 0, // TODO: Change to 1000 after testing
+    price: 1000,
     icon: 'cube-outline',
     
     // All skins available in this box
@@ -38,7 +38,7 @@ export const LOOT_BOXES = {
     name: 'Basic Paddle Box',
     type: 'paddle',
     description: 'Contains all 10 paddle skins',
-    price: 0, // TODO: Change to 1000 after testing
+    price: 1000,
     icon: 'cube-outline',
     
     // All skins available in this box
@@ -69,7 +69,7 @@ export const LOOT_BOXES = {
     name: 'Basic Theme Box',
     type: 'theme',
     description: 'Contains all 10 game themes',
-    price: 0, // TODO: Change to 1000 after testing
+    price: 1000,
     icon: 'cube-outline',
     
     // All themes available in this box

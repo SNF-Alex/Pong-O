@@ -13,10 +13,9 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.snfalex.pongo",
+      "bundleIdentifier": "com.snfalex.pongoapp",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSUserTrackingUsageDescription": "This app uses Game Center to save your progress across devices.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

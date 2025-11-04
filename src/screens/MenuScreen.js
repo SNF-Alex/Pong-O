@@ -8,7 +8,7 @@ import { getCoins, getUnlockedSkins, getUnlockedPaddleSkins, getUnlockedThemes }
 const HINTS = [
   "Rally bonus: +10 coins every 5 hits!",
   "You can get different skins by opening a box in the shop",
-  "You get more coins the harder the AI",
+  "The harder the AI, the more Coins you receive",
   "Sign in to protect your progress across devices",
   "Legendary themes have customizable color variants"
 ];

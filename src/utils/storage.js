@@ -617,3 +617,18 @@ export const setControlPosition = async (position) => {
     return false;
   }
 };
+
+// ============ DELETE ALL USER DATA ============
+
+export const deleteAllUserData = async () => {
+  try {
+    // Get all keys for this app
+    const allKeys = Object.values(KEYS);
+    await AsyncStorage.multiRemove(allKeys);
+    console.log('All user data deleted successfully');
+    return true;
+  } catch (error) {
+    console.error('Error deleting all user data:', error);
+    return false;
+  }
+};

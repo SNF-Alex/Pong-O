@@ -5,7 +5,7 @@ import { COLORS } from '../constants/gameConfig';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function HelpScreen({ navigation, onNavigate }) {
-  const { user, isSignedIn, signOut } = useAuth();
+  const { user, isSignedIn, signOut, deleteAccount } = useAuth();
 
   const handleLogout = () => {
     Alert.alert(
@@ -32,6 +32,63 @@ export default function HelpScreen({ navigation, onNavigate }) {
             } else {
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This will permanently delete all your game data, including coins, unlocked items, and progress. This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            // Double confirmation for account deletion
+            Alert.alert(
+              'Final Confirmation',
+              'This will permanently delete all your data. Are you absolutely sure?',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel'
+                },
+                {
+                  text: 'Yes, Delete Everything',
+                  style: 'destructive',
+                  onPress: async () => {
+                    const success = await deleteAccount();
+                    if (success) {
+                      Alert.alert(
+                        'Account Deleted',
+                        'Your account and all data have been permanently deleted.',
+                        [
+                          {
+                            text: 'OK',
+                            onPress: () => {
+                              if (onNavigate) {
+                                onNavigate('Menu');
+                              } else {
+                                navigation.goBack();
+                              }
+                            }
+                          }
+                        ]
+                      );
+                    } else {
+                      Alert.alert('Error', 'Failed to delete account. Please try again.');
+                    }
+                  }
+                }
+              ]
+            );
           }
         }
       ]
@@ -108,6 +165,14 @@ export default function HelpScreen({ navigation, onNavigate }) {
               >
                 <Ionicons name="log-out-outline" size={20} color="#EF4444" />
                 <Text style={styles.logoutButtonText}>Sign Out</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.deleteAccountButton}
+                onPress={handleDeleteAccount}
+              >
+                <Ionicons name="trash-outline" size={20} color="#DC2626" />
+                <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -357,6 +422,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#EF4444',
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.3)',
+  },
+  deleteAccountButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#DC2626',
   },
   signInButton: {
     flexDirection: 'row',

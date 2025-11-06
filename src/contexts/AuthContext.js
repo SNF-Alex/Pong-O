@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { deleteAllUserData } from '../utils/storage';
 import { Platform } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
@@ -211,6 +212,32 @@ export const AuthProvider = ({ children }) => {
     await markWarningAsSeen();
   };
 
+  const deleteAccount = async () => {
+    try {
+      // Delete all game data
+      await deleteAllUserData();
+      
+      // Delete auth data
+      await AsyncStorage.multiRemove([
+        AUTH_KEYS.USER_ID,
+        AUTH_KEYS.USER_DISPLAY_NAME,
+        AUTH_KEYS.AUTH_TYPE,
+        AUTH_KEYS.LAST_SYNC,
+        AUTH_KEYS.HAS_SEEN_WARNING,
+      ]);
+      
+      // Clear user state
+      setUser(null);
+      setHasSeenWarning(false);
+      
+      console.log('Account deleted successfully');
+      return true;
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -223,6 +250,7 @@ export const AuthProvider = ({ children }) => {
         signOut,
         skipSignIn,
         markWarningAsSeen,
+        deleteAccount,
       }}
     >
       {children}

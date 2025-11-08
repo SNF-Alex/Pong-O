@@ -103,6 +103,19 @@ export const BALL_SKINS = {
     animationSpeed: 300, // ms between color changes (slowed down from 100)
     unlocked: false,
   },
+
+  // SECRET DEVELOPER SKIN (Not in loot boxes)
+  ball_dev_x: {
+    id: 'ball_dev_x',
+    name: 'X Marks the Dev',
+    type: 'ball',
+    color: '#374151', // Dark grey
+    accentColor: '#10B981', // Neon green for X
+    rarity: 'secret',
+    animated: false,
+    unlocked: false,
+    secret: true,
+  },
 };
 
 // Paddle skin definitions
@@ -524,5 +537,11 @@ export const RARITY_INFO = {
     color: '#F59E0B',
     glowColor: 'rgba(245, 158, 11, 0.5)',
     dropRate: 1,
+  },
+  secret: {
+    label: 'Secret',
+    color: '#10B981', // Neon green text and border
+    glowColor: 'rgba(0, 0, 0, 0.9)', // Black background
+    dropRate: 0,
   },
 };

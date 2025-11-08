@@ -3,9 +3,45 @@ import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView, Alert 
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { useAuth } from '../contexts/AuthContext';
+import { addCoins, unlockSkin, getUnlockedSkins } from '../utils/storage';
 
 export default function HelpScreen({ navigation, onNavigate }) {
   const { user, isSignedIn, signOut, deleteAccount } = useAuth();
+  const [devClickCount, setDevClickCount] = useState(0);
+
+  const handleDevSecret = async () => {
+    const unlockedSkins = await getUnlockedSkins();
+    const hasSecretSkin = unlockedSkins.includes('ball_dev_x');
+    
+    if (hasSecretSkin) {
+      // Already has the skin, just give 1 coin
+      await addCoins(1);
+      Alert.alert(
+        '🎮 Dev Secret',
+        'You already unlocked the secret! Here\'s 1 coin.',
+        [{ text: 'Thanks!', style: 'default' }]
+      );
+    } else {
+      // Unlock the secret skin and give 1 coin
+      await unlockSkin('ball_dev_x');
+      await addCoins(1);
+      Alert.alert(
+        '🎮 Secret Unlocked!',
+        'You found the developer skin!\n\n"X Marks the Dev" has been added to your backpack!\n\n+1 coin',
+        [{ text: 'Awesome!', style: 'default' }]
+      );
+    }
+    setDevClickCount(0);
+  };
+
+  const handleTitlePress = () => {
+    const newCount = devClickCount + 1;
+    setDevClickCount(newCount);
+    
+    if (newCount === 7) {
+      handleDevSecret();
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -108,11 +144,15 @@ export default function HelpScreen({ navigation, onNavigate }) {
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
         
-        <View style={styles.headerContent}>
+        <TouchableOpacity 
+          style={styles.headerContent}
+          onPress={handleTitlePress}
+          activeOpacity={0.9}
+        >
           <Text style={styles.title}>HELP & SETTINGS</Text>
           <View style={styles.divider} />
           <Text style={styles.subtitle}>Account & Support</Text>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.backButton} />
       </View>

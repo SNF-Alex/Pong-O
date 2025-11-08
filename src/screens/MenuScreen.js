@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { useAuth } from '../contexts/AuthContext';
@@ -83,6 +83,14 @@ export default function MenuScreen({ navigation, onNavigate }) {
         <Text style={styles.subtitle}>Choose Your Challenge</Text>
       </View>
 
+      {/* Coins Display */}
+      <View style={styles.coinsContainerTop}>
+        <View style={styles.coinsDisplay}>
+          <Ionicons name="cash-outline" size={22} color="#F59E0B" />
+          <Text style={styles.coinsAmount}>{coins}</Text>
+        </View>
+      </View>
+
       {/* Sign-in Banner */}
       {showSignInBanner && (
         <View style={styles.signInBanner}>
@@ -112,8 +120,12 @@ export default function MenuScreen({ navigation, onNavigate }) {
         </View>
       )}
 
-      {/* Game Modes */}
-      <View style={styles.modesContainer}>
+      {/* Scrollable Game Modes */}
+      <ScrollView 
+        style={styles.modesContainer}
+        contentContainerStyle={styles.modesContentContainer}
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Pong Classic Mode */}
         <View style={styles.modeCard}>
@@ -149,7 +161,7 @@ export default function MenuScreen({ navigation, onNavigate }) {
                     <Text style={styles.difficultyText}>Easy</Text>
                   </View>
                   <View style={styles.coinReward}>
-                    <Ionicons name="disc" size={14} color="#F59E0B" />
+                    <Ionicons name="cash-outline" size={14} color="#F59E0B" />
                     <Text style={styles.coinText}>10</Text>
                   </View>
                 </View>
@@ -165,7 +177,7 @@ export default function MenuScreen({ navigation, onNavigate }) {
                     <Text style={styles.difficultyText}>Medium</Text>
                   </View>
                   <View style={styles.coinReward}>
-                    <Ionicons name="disc" size={14} color="#F59E0B" />
+                    <Ionicons name="cash-outline" size={14} color="#F59E0B" />
                     <Text style={styles.coinText}>50</Text>
                   </View>
                 </View>
@@ -181,7 +193,7 @@ export default function MenuScreen({ navigation, onNavigate }) {
                     <Text style={styles.difficultyText}>Hard</Text>
                   </View>
                   <View style={styles.coinReward}>
-                    <Ionicons name="disc" size={14} color="#F59E0B" />
+                    <Ionicons name="cash-outline" size={14} color="#F59E0B" />
                     <Text style={styles.coinText}>100</Text>
                   </View>
                 </View>
@@ -203,52 +215,47 @@ export default function MenuScreen({ navigation, onNavigate }) {
           </View>
         </View>
 
-      </View>
+      </ScrollView>
 
-      {/* Coins Display Above Tab Bar */}
-      <View style={styles.coinsContainer}>
-        <View style={styles.coinsDisplay}>
-          <Ionicons name="disc" size={22} color="#F59E0B" />
-          <Text style={styles.coinsAmount}>{coins}</Text>
+      {/* Fixed Bottom Section with Background */}
+      <View style={styles.fixedBottomSection}>
+        {/* Footer Tip */}
+        <View style={styles.footer}>
+          <View style={styles.tipContainer}>
+            <Ionicons name="bulb" size={18} color={COLORS.primary} />
+            <Text style={styles.tipText}>{HINTS[currentHintIndex]}</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Footer Tip */}
-      <View style={styles.footer}>
-        <View style={styles.tipContainer}>
-          <Ionicons name="bulb" size={18} color={COLORS.primary} />
-          <Text style={styles.tipText}>{HINTS[currentHintIndex]}</Text>
+        {/* Bottom Navigation */}
+        <View style={styles.bottomNav}>
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => onNavigate('Shop')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="storefront-outline" size={28} color={COLORS.primary} />
+            <Text style={styles.navLabel}>Shop</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => onNavigate('Backpack')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="bag-outline" size={28} color={COLORS.primary} />
+            <Text style={styles.navLabel}>Backpack</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navButton}
+            onPress={() => onNavigate('Help')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="help-circle-outline" size={28} color={COLORS.primary} />
+            <Text style={styles.navLabel}>Help</Text>
+          </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => onNavigate('Shop')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="storefront-outline" size={28} color={COLORS.primary} />
-          <Text style={styles.navLabel}>Shop</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => onNavigate('Backpack')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="bag-outline" size={28} color={COLORS.primary} />
-          <Text style={styles.navLabel}>Backpack</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => onNavigate('Help')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="help-circle-outline" size={28} color={COLORS.primary} />
-          <Text style={styles.navLabel}>Help</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -264,7 +271,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingHorizontal: 30,
-    marginBottom: 40,
+    marginBottom: 16,
   },
   title: {
     fontSize: 48,
@@ -286,9 +293,23 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontWeight: '500',
   },
+  coinsContainerTop: {
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    marginBottom: 16,
+  },
   modesContainer: {
     flex: 1,
+    zIndex: 1,
+  },
+  modesContentContainer: {
     paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  fixedBottomSection: {
+    backgroundColor: COLORS.background,
+    zIndex: 10,
+    paddingTop: 8,
   },
   modeCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -390,11 +411,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F59E0B',
   },
-  coinsContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    marginBottom: 16,
-  },
   coinsDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -419,8 +435,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 30,
-    paddingTop: 20,
-    marginBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   tipContainer: {
     flexDirection: 'row',
@@ -515,6 +531,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
+    zIndex: 10,
   },
   navButton: {
     alignItems: 'center',

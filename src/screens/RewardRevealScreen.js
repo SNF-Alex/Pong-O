@@ -1,20 +1,50 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { RARITY_INFO } from '../config/skins';
-import { unlockSkin, unlockPaddleSkin, unlockTheme } from '../utils/storage';
+import { unlockSkin, unlockPaddleSkin, unlockTheme, addCoins, DUPLICATE_REFUNDS } from '../utils/storage';
 
 export default function RewardRevealScreen({ route, navigation, onNavigate, params }) {
   const skin = params?.skin || route?.params?.skin;
   const rarity = params?.rarity || route?.params?.rarity;
   const rarityInfo = RARITY_INFO[rarity];
   
+  const [isDuplicate, setIsDuplicate] = useState(false);
+  const [coinsAwarded, setCoinsAwarded] = useState(0);
+  const [checked, setChecked] = useState(false);
+  
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  // Check for duplicate on mount
   useEffect(() => {
+    checkForDuplicate();
+  }, []);
+
+  const checkForDuplicate = async () => {
+    let result;
+    if (skin.type === 'paddle') {
+      result = await unlockPaddleSkin(skin.id);
+    } else if (skin.type === 'theme') {
+      result = await unlockTheme(skin.id);
+    } else {
+      result = await unlockSkin(skin.id);
+    }
+
+    if (result.isDuplicate) {
+      const coins = DUPLICATE_REFUNDS[rarity];
+      await addCoins(coins);
+      setIsDuplicate(true);
+      setCoinsAwarded(coins);
+    }
+    setChecked(true);
+  };
+
+  useEffect(() => {
+    if (!checked) return;
+    
     // Entrance animations
     Animated.sequence([
       Animated.parallel([
@@ -45,57 +75,25 @@ export default function RewardRevealScreen({ route, navigation, onNavigate, para
         ])
       ),
     ]).start();
-  }, []);
+  }, [checked]);
 
   const handleCollect = async () => {
-    // Save skin to AsyncStorage based on type
-    if (skin.type === 'paddle') {
-      await unlockPaddleSkin(skin.id);
-      if (onNavigate) {
-        onNavigate('Shop', { activeSection: 'paddles' });
-      } else {
-        navigation.navigate('Shop', { activeSection: 'paddles' });
-      }
-    } else if (skin.type === 'theme') {
-      await unlockTheme(skin.id);
-      if (onNavigate) {
-        onNavigate('Shop', { activeSection: 'themes' });
-      } else {
-        navigation.navigate('Shop', { activeSection: 'themes' });
-      }
+    // Item already unlocked in checkForDuplicate, just navigate
+    const section = skin.type === 'paddle' ? 'paddles' : skin.type === 'theme' ? 'themes' : 'balls';
+    if (onNavigate) {
+      onNavigate('Shop', { activeSection: section });
     } else {
-      await unlockSkin(skin.id);
-      if (onNavigate) {
-        onNavigate('Shop', { activeSection: 'balls' });
-      } else {
-        navigation.navigate('Shop', { activeSection: 'balls' });
-      }
+      navigation.navigate('Shop', { activeSection: section });
     }
   };
 
   const handleViewBackpack = async () => {
-    // Save skin to AsyncStorage first
-    if (skin.type === 'paddle') {
-      await unlockPaddleSkin(skin.id);
-      if (onNavigate) {
-        onNavigate('Backpack', { activeSection: 'paddles' });
-      } else {
-        navigation.navigate('Backpack', { activeSection: 'paddles' });
-      }
-    } else if (skin.type === 'theme') {
-      await unlockTheme(skin.id);
-      if (onNavigate) {
-        onNavigate('Backpack', { activeSection: 'themes' });
-      } else {
-        navigation.navigate('Backpack', { activeSection: 'themes' });
-      }
+    // Item already unlocked in checkForDuplicate, just navigate
+    const section = skin.type === 'paddle' ? 'paddles' : skin.type === 'theme' ? 'themes' : 'balls';
+    if (onNavigate) {
+      onNavigate('Backpack', { activeSection: section });
     } else {
-      await unlockSkin(skin.id);
-      if (onNavigate) {
-        onNavigate('Backpack', { activeSection: 'balls' });
-      } else {
-        navigation.navigate('Backpack', { activeSection: 'balls' });
-      }
+      navigation.navigate('Backpack', { activeSection: section });
     }
   };
 
@@ -198,6 +196,12 @@ export default function RewardRevealScreen({ route, navigation, onNavigate, para
             {skin.animated && (
               <Ionicons name="color-palette" size={40} color="#FFF" />
             )}
+            {skin.id === 'ball_dev_x' && (
+              <View style={styles.xMarkContainer}>
+                <View style={[styles.xLine, styles.xLine1, { backgroundColor: skin.accentColor }]} />
+                <View style={[styles.xLine, styles.xLine2, { backgroundColor: skin.accentColor }]} />
+              </View>
+            )}
           </View>
         )}
       </Animated.View>
@@ -217,6 +221,21 @@ export default function RewardRevealScreen({ route, navigation, onNavigate, para
       >
         {skin.name}
       </Animated.Text>
+
+      {/* Duplicate indicator */}
+      {isDuplicate && (
+        <Animated.View
+          style={[
+            styles.duplicateBadge,
+            {
+              opacity: fadeAnim,
+            },
+          ]}
+        >
+          <Ionicons name="cash-outline" size={20} color="#F59E0B" />
+          <Text style={styles.duplicateText}>Duplicate! +{coinsAwarded} Coins</Text>
+        </Animated.View>
+      )}
 
       {/* Special indicator for animated skins */}
       {skin.animated && (
@@ -322,6 +341,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 20,
     elevation: 10,
+    position: 'relative',
+  },
+  xMarkContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  xLine: {
+    position: 'absolute',
+    width: 80,
+    height: 6,
+    borderRadius: 3,
+  },
+  xLine1: {
+    transform: [{ rotate: '45deg' }],
+  },
+  xLine2: {
+    transform: [{ rotate: '-45deg' }],
   },
   paddlePreview: {
     width: 150,
@@ -372,6 +411,24 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: 1,
     marginBottom: 12,
+  },
+  duplicateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    marginBottom: 12,
+  },
+  duplicateText: {
+    fontSize: 16,
+    color: '#F59E0B',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   specialBadge: {
     flexDirection: 'row',

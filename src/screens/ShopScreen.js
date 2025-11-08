@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/gameConfig';
 import { LOOT_BOXES } from '../config/lootBoxes';
-import { getCoins } from '../utils/storage';
+import { getCoins, subtractCoins } from '../utils/storage';
 
 export default function ShopScreen({ route, navigation, onNavigate, params }) {
   const [activeSection, setActiveSection] = useState(params?.activeSection || route?.params?.activeSection || 'balls'); // 'balls', 'paddles', 'themes'
@@ -37,9 +37,19 @@ export default function ShopScreen({ route, navigation, onNavigate, params }) {
     }
   }, [params?.activeSection, route?.params?.activeSection]);
 
-  const handlePurchaseBox = (boxId) => {
-    // TODO: Check if user has enough coins (when price is 1000)
-    // For now, since price is 0, just navigate to Plinko
+  const handlePurchaseBox = async (boxId) => {
+    const box = LOOT_BOXES[boxId];
+    
+    // Check if user has enough coins
+    if (coins < box.price) {
+      return; // Don't do anything if insufficient coins
+    }
+    
+    // Deduct coins
+    await subtractCoins(box.price);
+    await loadCoins(); // Refresh coin display
+    
+    // Navigate to Plinko
     if (onNavigate) {
       onNavigate('Plinko', { boxId });
     } else {
@@ -47,7 +57,10 @@ export default function ShopScreen({ route, navigation, onNavigate, params }) {
     }
   };
 
-  const renderBoxCard = (box) => (
+  const renderBoxCard = (box) => {
+    const hasEnoughCoins = coins >= box.price;
+    
+    return (
     <View key={box.id} style={styles.boxCard}>
       <View style={styles.boxIconContainer}>
         <Ionicons name={box.icon} size={80} color={COLORS.primary} />
@@ -87,7 +100,7 @@ export default function ShopScreen({ route, navigation, onNavigate, params }) {
       {/* Price and Purchase Button */}
       <View style={styles.purchaseContainer}>
         <View style={styles.priceTag}>
-          <Ionicons name="disc" size={24} color="#F59E0B" />
+          <Ionicons name="cash-outline" size={24} color="#F59E0B" />
           <Text style={styles.priceText}>
             {box.price === 0 ? 'FREE' : box.price}
           </Text>
@@ -97,12 +110,25 @@ export default function ShopScreen({ route, navigation, onNavigate, params }) {
         </View>
 
         <TouchableOpacity
-          style={styles.purchaseButton}
+          style={[
+            styles.purchaseButton,
+            !hasEnoughCoins && styles.purchaseButtonDisabled
+          ]}
           onPress={() => handlePurchaseBox(box.id)}
-          activeOpacity={0.8}
+          activeOpacity={hasEnoughCoins ? 0.8 : 1}
+          disabled={!hasEnoughCoins}
         >
-          <Ionicons name="gift-outline" size={24} color="#000" />
-          <Text style={styles.purchaseButtonText}>OPEN BOX</Text>
+          <Ionicons 
+            name={hasEnoughCoins ? "gift-outline" : "close-circle"} 
+            size={24} 
+            color={hasEnoughCoins ? "#000" : "#FFF"} 
+          />
+          <Text style={[
+            styles.purchaseButtonText,
+            !hasEnoughCoins && styles.purchaseButtonTextDisabled
+          ]}>
+            {hasEnoughCoins ? "OPEN BOX" : "INSUFFICIENT COINS"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -116,7 +142,8 @@ export default function ShopScreen({ route, navigation, onNavigate, params }) {
         </View>
       )}
     </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -137,9 +164,14 @@ export default function ShopScreen({ route, navigation, onNavigate, params }) {
           <Text style={styles.subtitle}>Purchase Loot Boxes</Text>
         </View>
 
-        <View style={styles.coinsDisplay}>
-          <Ionicons name="disc" size={18} color="#F59E0B" />
-          <Text style={styles.coinsAmount}>{coins}</Text>
+        <View style={styles.backButton} />
+      </View>
+
+      {/* Coins Display */}
+      <View style={styles.coinsContainer}>
+        <View style={styles.coinsDisplayMain}>
+          <Ionicons name="cash-outline" size={22} color="#F59E0B" />
+          <Text style={styles.coinsAmountLarge}>{coins}</Text>
         </View>
       </View>
 
@@ -217,7 +249,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 8,
     paddingHorizontal: 20,
   },
   backButton: {
@@ -250,6 +282,34 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     fontWeight: '500',
+  },
+  coinsContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  coinsDisplayMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  coinsAmountLarge: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#F59E0B',
+    letterSpacing: 1,
   },
   coinsDisplay: { 
     flexDirection: 'row', 
@@ -414,11 +474,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 8,
   },
+  purchaseButtonDisabled: {
+    backgroundColor: '#EF4444',
+    opacity: 0.9,
+  },
   purchaseButtonText: {
     fontSize: 18,
     fontWeight: '700',
     color: '#000',
     letterSpacing: 1,
+  },
+  purchaseButtonTextDisabled: {
+    color: '#FFF',
+    fontSize: 14,
   },
   noteContainer: {
     flexDirection: 'row',

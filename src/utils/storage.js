@@ -1,6 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BALL_SKINS, PADDLE_SKINS, THEME_SKINS } from '../config/skins';
 
+// Duplicate skin coin refunds by rarity
+export const DUPLICATE_REFUNDS = {
+  common: 100,
+  uncommon: 200,
+  rare: 300,
+  epic: 400,
+  legendary: 500,
+};
+
 // Storage keys
 const KEYS = {
   COINS: '@ponggame:coins',
@@ -83,14 +92,17 @@ export const getUnlockedSkins = async () => {
 export const unlockSkin = async (skinId) => {
   try {
     const unlocked = await getUnlockedSkins();
-    if (!unlocked.includes(skinId)) {
+    const isDuplicate = unlocked.includes(skinId);
+    
+    if (!isDuplicate) {
       unlocked.push(skinId);
       await AsyncStorage.setItem(KEYS.UNLOCKED_SKINS, JSON.stringify(unlocked));
     }
-    return true;
+    
+    return { success: true, isDuplicate };
   } catch (error) {
     console.error('Error unlocking skin:', error);
-    return false;
+    return { success: false, isDuplicate: false };
   }
 };
 
@@ -162,14 +174,17 @@ export const getUnlockedPaddleSkins = async () => {
 export const unlockPaddleSkin = async (paddleId) => {
   try {
     const unlocked = await getUnlockedPaddleSkins();
-    if (!unlocked.includes(paddleId)) {
+    const isDuplicate = unlocked.includes(paddleId);
+    
+    if (!isDuplicate) {
       unlocked.push(paddleId);
       await AsyncStorage.setItem(KEYS.UNLOCKED_PADDLES, JSON.stringify(unlocked));
     }
-    return true;
+    
+    return { success: true, isDuplicate };
   } catch (error) {
     console.error('Error unlocking paddle:', error);
-    return false;
+    return { success: false, isDuplicate: false };
   }
 };
 
@@ -239,14 +254,17 @@ export const getUnlockedThemes = async () => {
 export const unlockTheme = async (themeId) => {
   try {
     const unlocked = await getUnlockedThemes();
-    if (!unlocked.includes(themeId)) {
+    const isDuplicate = unlocked.includes(themeId);
+    
+    if (!isDuplicate) {
       unlocked.push(themeId);
       await AsyncStorage.setItem(KEYS.UNLOCKED_THEMES, JSON.stringify(unlocked));
     }
-    return true;
+    
+    return { success: true, isDuplicate };
   } catch (error) {
     console.error('Error unlocking theme:', error);
-    return false;
+    return { success: false, isDuplicate: false };
   }
 };
 

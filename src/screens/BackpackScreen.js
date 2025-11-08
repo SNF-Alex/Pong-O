@@ -196,6 +196,12 @@ export default function BackpackScreen({ route, navigation, onNavigate, params }
           {skin.animated && (
             <Ionicons name="color-palette" size={24} color="#FFF" />
           )}
+          {skin.id === 'ball_dev_x' && (
+            <View style={styles.xMarkContainer}>
+              <View style={[styles.xLine, styles.xLine1, { backgroundColor: skin.accentColor }]} />
+              <View style={[styles.xLine, styles.xLine2, { backgroundColor: skin.accentColor }]} />
+            </View>
+          )}
         </View>
 
         <Text style={[styles.skinName, !isUnlocked && styles.lockedText]}>
@@ -355,7 +361,10 @@ export default function BackpackScreen({ route, navigation, onNavigate, params }
     );
   };
 
-  const allSkins = Object.values(BALL_SKINS);
+  // Filter out secret skins unless they're unlocked
+  const allSkins = Object.values(BALL_SKINS).filter(skin => 
+    !skin.secret || unlockedSkinIds.includes(skin.id)
+  );
   const unlockedSkins = sortSkins(allSkins.filter(skin => unlockedSkinIds.includes(skin.id)));
   const lockedSkins = sortSkins(allSkins.filter(skin => !unlockedSkinIds.includes(skin.id)));
 
@@ -382,14 +391,6 @@ export default function BackpackScreen({ route, navigation, onNavigate, params }
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
-      {/* Coins Display at Top */}
-      <View style={styles.coinsContainer}>
-        <View style={styles.coinsDisplay}>
-          <Ionicons name="disc" size={20} color="#F59E0B" />
-          <Text style={styles.coinsAmount}>{coins}</Text>
-        </View>
-      </View>
-
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
@@ -405,6 +406,14 @@ export default function BackpackScreen({ route, navigation, onNavigate, params }
         </View>
 
         <View style={styles.backButton} />
+      </View>
+
+      {/* Coins Display */}
+      <View style={styles.coinsContainerMain}>
+        <View style={styles.coinsDisplayMain}>
+          <Ionicons name="cash-outline" size={22} color="#F59E0B" />
+          <Text style={styles.coinsAmountLarge}>{coins}</Text>
+        </View>
       </View>
 
       <View style={styles.sectionTabs}>
@@ -604,6 +613,34 @@ export default function BackpackScreen({ route, navigation, onNavigate, params }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background, paddingTop: 60 },
+  coinsContainerMain: {
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  coinsDisplayMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  coinsAmountLarge: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#F59E0B',
+    letterSpacing: 1,
+  },
   coinsContainer: { 
     alignItems: 'center', 
     paddingHorizontal: 20, 
@@ -631,7 +668,7 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
     letterSpacing: 1 
   },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, paddingHorizontal: 20, paddingTop: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 8, paddingHorizontal: 20, paddingTop: 10 },
   backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerContent: { flex: 1, alignItems: 'center' },
   title: { fontSize: 32, fontWeight: '300', color: COLORS.text, letterSpacing: 8, marginBottom: 6 },
@@ -654,7 +691,11 @@ const styles = StyleSheet.create({
   equippedBadge: { position: 'absolute', top: 8, right: 8, left: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: 'rgba(16, 185, 129, 0.9)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#10B981', zIndex: 10 },
   equippedText: { fontSize: 9, fontWeight: '700', color: '#FFF', letterSpacing: 0.5 },
   lockOverlay: { position: 'absolute', top: '35%', zIndex: 10 },
-  ballPreview: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, alignItems: 'center', justifyContent: 'center' },
+  ballPreview: { width: 80, height: 80, borderRadius: 40, marginBottom: 12, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  xMarkContainer: { position: 'absolute', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
+  xLine: { position: 'absolute', width: 50, height: 4, borderRadius: 2 },
+  xLine1: { transform: [{ rotate: '45deg' }] },
+  xLine2: { transform: [{ rotate: '-45deg' }] },
   paddlePreview: { width: 80, height: 20, borderRadius: 10, marginBottom: 12, marginTop: 20, alignItems: 'center', justifyContent: 'center' },
   themePreview: { width: 80, height: 60, borderRadius: 8, marginBottom: 12, overflow: 'hidden', position: 'relative' },
   themeColorRow: { flex: 1, flexDirection: 'row', gap: 2 },

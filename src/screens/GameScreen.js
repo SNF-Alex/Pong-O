@@ -380,7 +380,7 @@ export default function GameScreen({ route, navigation, onNavigate, params }) {
           <View style={styles.dividerSmall} />
           <View style={styles.statsRow}>
             <View style={styles.coinsRow}>
-              <Ionicons name="disc" size={14} color="#F59E0B" />
+              <Ionicons name="cash-outline" size={14} color="#F59E0B" />
               <Text style={styles.coinsText}>{gameState.totalCoins}</Text>
             </View>
             {gameState.rallyCount > 0 && (
@@ -434,7 +434,14 @@ export default function GameScreen({ route, navigation, onNavigate, params }) {
               backgroundColor: ballColor,
             },
           ]}
-        />
+        >
+          {ballSkin?.id === 'ball_dev_x' && (
+            <>
+              <View style={[styles.xLine, styles.xLine1, { backgroundColor: ballSkin.accentColor }]} />
+              <View style={[styles.xLine, styles.xLine2, { backgroundColor: ballSkin.accentColor }]} />
+            </>
+          )}
+        </View>
       </View>
 
       {/* Control Buttons */}
@@ -464,7 +471,7 @@ export default function GameScreen({ route, navigation, onNavigate, params }) {
             </Text>
             {gameState.score.player > gameState.score.ai && (
               <View style={styles.coinsEarnedContainer}>
-                <Ionicons name="disc" size={18} color="#F59E0B" />
+                <Ionicons name="cash-outline" size={18} color="#F59E0B" />
                 <Text style={styles.coinsEarned}>{gameState.totalCoins}</Text>
               </View>
             )}
@@ -845,7 +852,21 @@ const getStyles = (colors) => StyleSheet.create({
     width: GAME_CONFIG.BALL_SIZE,
     height: GAME_CONFIG.BALL_SIZE,
     borderRadius: GAME_CONFIG.BALL_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
     // backgroundColor set dynamically based on equipped skin
+  },
+  xLine: {
+    position: 'absolute',
+    width: 12,
+    height: 2,
+    borderRadius: 1,
+  },
+  xLine1: {
+    transform: [{ rotate: '45deg' }],
+  },
+  xLine2: {
+    transform: [{ rotate: '-45deg' }],
   },
   controls: {
     flexDirection: 'row',
